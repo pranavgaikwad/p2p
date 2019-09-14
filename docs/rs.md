@@ -11,9 +11,14 @@ Each entry in the list of clients has following information about the client :
 - activity in the last 30 days
 - last registration date
 
+Each entry is encapsulated as an object of class Client.
+
+```python
+class Client
+```
+
 ## Client List Design
 Depending on whether the list of clients should persist or not, following implementations are possible :
 - in-memory list
 - small file db (tinydb) : allows recovery from crash 
-
 
