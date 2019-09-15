@@ -1,4 +1,8 @@
+import time
+import socket 
 import unittest
+import threading
+from p2p.rs.rs import RegistrationServer
 
 class RegistrationServerTest(unittest.TestCase): 
     """ Registration Server Tests"""
@@ -12,7 +16,13 @@ class RegistrationServerTest(unittest.TestCase):
 
     def test_start(self):
         """ starts the server """
-        pass
+        client = socket.socket()
+        client.connect(('127.0.0.1', RegistrationServer.PORT))
+        time.sleep(10)
+        client.send(b'Sample Message')
+        data = client.recv(1024)
+        print(str(data))
+        client.close()
 
     def test_stop(self):
         """ stops the server """
@@ -25,3 +35,6 @@ class RegistrationServerTest(unittest.TestCase):
     def test_receive(self):
         """ receives a new message """
         pass
+
+if __name__ == "__main__":
+    unittest.main()
