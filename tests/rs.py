@@ -3,6 +3,7 @@ import socket
 import unittest
 import threading
 from p2p.rs.rs import RegistrationServer
+from p2p.protocol.proto import Message, MethodTypes
 
 class RegistrationServerTest(unittest.TestCase): 
     """ Registration Server Tests"""
@@ -19,13 +20,18 @@ class RegistrationServerTest(unittest.TestCase):
         client = socket.socket()
         client.connect(('127.0.0.1', RegistrationServer.PORT))
         time.sleep(5)
-        client.send(b'Sample Message')
+        msg = Message()
+        msg.method = MethodTypes.Register.name
+        msg.headers = {}
+        msg.version = Message.VERSION
+        msg.payload = "Payload"
+        client.send(bytes(str(msg), 'utf-8'))
         data = client.recv(1024)
-        print(str(data))
+        print(data.decode('utf-8'))
         client.close()
 
     def test_start(self):
-        """ starts the server """
+        """ starts the server and tries connecting """
         threads = []
         for i in range(3):
             threads.append(threading.Thread(target=self._socket_connect_test))
