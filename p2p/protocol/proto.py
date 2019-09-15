@@ -48,6 +48,7 @@ class Message(object):
                 headers[header] = value
             self.headers = headers
             self.payload = payload
+            return self
         except:
             raise ValueError("Invalid message")
 
