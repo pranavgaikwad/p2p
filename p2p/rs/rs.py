@@ -68,13 +68,13 @@ class RegistrationServer(object):
             for s in readable:
                 if s is self.conn:
                     conn, client = s.accept()
-                    print("Accepted connection from %s"%str(client))
+                    self.logger.info("Accepted connection from %s"%str(client))
                     inputs.append(conn)
                     messages[conn] = queue.Queue()
                 else:
                     data = s.recv(1024)
                     if data:
-                        print("Received message '%s' from %s"%(str(data),str(s)))
+                        self.logger.info("Received message '%s' from %s"%(str(data),str(s)))
                         messages[s].put(data)
                         if s not in outputs:
                             outputs.append(s)
@@ -86,17 +86,15 @@ class RegistrationServer(object):
                         del messages[s]
 
             for s in writeable:
-                print("Writeable...")
+                self.logger.info("Writeable...")
                 try:
                     next_msg = messages[s].get_nowait()
-                except queue.Queue.Empty:
-                    print("Empty queue")
+                except queue.Empty:
                     outputs.remove(s)
                 else:
                     s.send(next_msg)
 
             for s in exceptional:
-                print("Handling exception")
                 inputs.remove(s)
                 for s in outputs:
                     outputs.remove(s)
