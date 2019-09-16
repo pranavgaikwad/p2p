@@ -19,37 +19,42 @@ class RegistrationServerTest(unittest.TestCase):
         """ connects to a server socket """
         client = socket.socket()
         client.connect(('127.0.0.1', RegistrationServer.PORT))
-        time.sleep(5)
+        time.sleep(4)
         msg = Message()
         msg.method = MethodTypes.Register.name
         msg.headers = {}
         msg.version = Message.VERSION
         msg.payload = "Payload"
-        client.send(bytes(str(msg), 'utf-8'))
+        client.send(msg.to_bytes())
         data = client.recv(1024)
-        print(data.decode('utf-8'))
+        msg.method = MethodTypes.KeepAlive.name
+        client.send(msg.to_bytes())
+        data = client.recv(1024)
+        msg.method = MethodTypes.Leave.name
+        client.send(msg.to_bytes())
+        data = client.recv(1024)
+        self.buffer.append(data.decode('utf-8'))
         client.close()
 
     def test_start(self):
         """ starts the server and tries connecting """
         threads = []
+        self.buffer = []
+        rs = RegistrationServer('127.0.0.1', RegistrationServer.PORT)
+        server_thread = threading.Thread(target=rs.start, kwargs=dict(timeout=15,))
+        server_thread.start()
+        time.sleep(5)
         for i in range(3):
             threads.append(threading.Thread(target=self._socket_connect_test))
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
+        server_thread.join()
+        self.assertEqual(['RES P2Pv1\n\nSuccess', 'RES P2Pv1\n\nSuccess', 'RES P2Pv1\n\nSuccess'], self.buffer)
 
     def test_stop(self):
         """ stops the server """
-        pass
-
-    def test_send(self):
-        """ sends a new message """
-        pass
-
-    def test_receive(self):
-        """ receives a new message """
         pass
 
 if __name__ == "__main__":
