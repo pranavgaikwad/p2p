@@ -58,5 +58,12 @@ self.messages[conn] = queue.Queue()
 
 Here, `conn` represents the connection of the client.
 
+To send a new message to a client `conn` :
+
+```python
+self.messages[conn].put(message.to_bytes())
+```
+
 Any message added to this queue at any point of time, will be sent to the client represented by `conn`. This happens in time slices. Messages will be sent in the next time slice.
+
 
