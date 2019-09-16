@@ -33,6 +33,9 @@ class Message(object):
         self.payload = ""
         self.logger = logging.getLogger(__name__)
 
+    def to_bytes(self):
+        return bytes(self.__str__(), 'utf-8')
+
     def from_str(self, msg):
         """ loads a message from string """
         try:

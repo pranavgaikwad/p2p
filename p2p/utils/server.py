@@ -1,7 +1,9 @@
 import sys
+import time
 import queue
 import socket
 import select
+from math import inf
 from p2p.utils.logger import logger
 
 class Server(object):
@@ -15,7 +17,7 @@ class Server(object):
         self.stopped = False
         self.conn = None
         self.logger = logger()
-        self.messages = {} # message queue
+        self.messages = {} # message queue 
 
     def _new_connection_callback(self, conn):
         """ callback for new connection. override """
@@ -25,7 +27,7 @@ class Server(object):
         """ callback for new message. override """
         pass
 
-    def start(self):
+    def start(self, timeout=inf):
         """ starts the server """
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn.setblocking(0)
@@ -34,9 +36,11 @@ class Server(object):
         self.conn.listen(5)
         inputs = [self.conn]
         outputs = []
-        while inputs and not self.stopped:
+        timeout = time.time() + timeout
+        while not self.stopped and inputs and time.time() < timeout:
             # listen for connections
-            readable, writeable, exceptional = select.select(inputs, outputs, inputs)
+            self.logger.info("Waiting for next event...")
+            readable, writeable, exceptional = select.select(inputs, outputs, inputs, 5)
             for s in readable:
                 if s is self.conn:
                     conn, client = s.accept()
@@ -47,7 +51,7 @@ class Server(object):
                 else:
                     data = s.recv(1024)
                     if data:
-                        self.logger.info("Received message '%s' from %s"%(str(data),str(s)))
+                        self.logger.info("Received message '%s' from %s"%(str(data),str(s.getpeername()[0])+":"+str(s.getpeername()[1])))
                         if s not in outputs:
                             outputs.append(s)
                         self._new_message_callback(s, data)
@@ -63,6 +67,8 @@ class Server(object):
                     next_msg = self.messages[s].get_nowait()
                 except queue.Empty:
                     outputs.remove(s)
+                except KeyError:
+                    pass
                 else:
                     s.send(next_msg)
 
@@ -72,6 +78,8 @@ class Server(object):
                     outputs.remove(s)
                 s.close()
                 del self.messages[s]
+        else:
+            self.stop()
 
     def stop(self):
         """ stops the server """
