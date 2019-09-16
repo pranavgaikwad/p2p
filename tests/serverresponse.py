@@ -1,5 +1,5 @@
 from p2p.protocol.proto import ServerResponse as Message, ResponseStatus as Status
-from p2p.protovol.proto import Headers, MethodTypes
+from p2p.protocol.proto import Headers, MethodTypes
 import unittest
 # defines protocols required by P2P-DI System
 
@@ -44,7 +44,7 @@ class ServerResponseTest(unittest.TestCase):
 
     def test_str(self):
         """ string representation of message """
-        msg = Message("Success", Status.Success)
+        msg = Message("Success", Status.Success.value)
         self.assertEqual(str(msg), "Register 200 P2Pv1\n\nSuccess")
         pass 
 
