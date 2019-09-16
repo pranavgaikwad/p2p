@@ -4,9 +4,10 @@ class ClientEntry(object):
     FLAG_INACTIVE = 1
     
     TTL = 7200
-    def __init__(self, host, port):
+    def __init__(self, host, port, p2port=0):
         self.host = host
         self.port = port
+        self.p2port = p2port # port on which P2P server is running
         self.cookie = "%s: %s"%(host, port)
         self.flag = ClientEntry.FLAG_ACTIVE
         self.ttl = ClientEntry.TTL

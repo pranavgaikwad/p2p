@@ -24,7 +24,7 @@ class RegistrationServerTest(unittest.TestCase):
         msg.method = MethodTypes.Register.name
         msg.headers = {}
         msg.version = Message.VERSION
-        msg.payload = "Payload"
+        msg.payload = "nick-name\n7000"
         client.send(msg.to_bytes())
         data = client.recv(1024)
         msg.method = MethodTypes.KeepAlive.name
@@ -51,7 +51,8 @@ class RegistrationServerTest(unittest.TestCase):
         for thread in threads:
             thread.join()
         server_thread.join()
-        self.assertEqual(['Reponse 200 P2Pv1\n\nSuccess', 'Response 200 P2Pv1\n\nSuccess', 'Response 200 P2Pv1\n\nSuccess'], self.buffer)
+        expected = 'Response 200 P2Pv1\nContentLength: 7\n\nSuccess'
+        self.assertEqual([expected, expected, expected], self.buffer)
 
     def test_stop(self):
         """ stops the server """

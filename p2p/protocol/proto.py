@@ -62,8 +62,8 @@ class Message(object):
             self.headers = headers
             self.payload = payload
             return self
-        except:
-            raise ValueError("Invalid message")
+        except Exception as e:
+            raise ValueError("Invalid message %s"%str(e))
 
     def __str__(self):
         headers_str = ""
@@ -83,9 +83,9 @@ class Message(object):
 
 class ServerResponse(Message):
     """ a special message sent by server as a response """
-    def __init__(self, response, status=ResponseStatus.Unknown):
+    def __init__(self, response, status):
         self.method = MethodTypes.Response.name
-        self.status = ResponseStatus.Unknown
+        self.status = status
         self.version = Message.VERSION
         self.headers = {
             Headers.ContentLength.name: len(response),
@@ -96,7 +96,7 @@ class ServerResponse(Message):
         headers_str = ""
         for header, value in self.headers.items():
             headers_str = "%s%s: %s\n"%(headers_str, header, value)
-        return "%s%s%s%s%s%s%s"%(self.method, self.SR_FIELDS, self.status, self.SR_FIELDS, self.version,
+        return "%s%s%s%s%s%s%s%s%s"%(self.method, self.SR_FIELDS, self.status, self.SR_FIELDS, self.version,
             self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
 
     def from_str(self, msg):
@@ -106,7 +106,7 @@ class ServerResponse(Message):
             payload = msg.split('\n\n')[1]
             meta_lines = meta.split('\n')
             self.method = meta_lines[0].split(' ')[0]
-            self.status = meta_lines[0].split(' ')[1]
+            self.status = str(meta_lines[0].split(' ')[1])
             self.version = meta_lines[0].split(' ')[2]
             headers = {}
             for line in meta_lines[1:]:

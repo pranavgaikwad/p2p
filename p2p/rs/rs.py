@@ -29,11 +29,13 @@ class RegistrationServer(Server):
     def _handle_register(self, conn, msg):
         """ handles register request """
         host = conn.getpeername()[0]
-        client = Client(host=host, port=port)
+        port = conn.getpeername()[1]
         self.mutex.acquire()
         response = ""
+        client = Client(host=host, port=port)
         try:
-            port = msg.payload().split('\n')[1]
+            p2port = msg.payload.split('\n')[1]
+            client.p2port = p2port
             # TODO: improve logic
             if client in self.clients:
                 idx = self.clients.index(client)
@@ -41,14 +43,14 @@ class RegistrationServer(Server):
                 self.clients[idx].flag = Client.FLAG_ACTIVE
             else:
                 self.clients.append(client)
-            self.logger.info("Registered new client (%s: %s)"%(client.host, port))
-            response = Response("Success", Status.Success)
+            self.logger.info("Registered new client (%s: %s)"%(client.host, p2port))
+            response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
             self.logger.error("Failed registering new client (%s: %s) : Bad Message"%(client.host, client.port))
-            response = Response("Error", Status.BadMessage)
-        except:
-            self.logger.error("Failed registering new client (%s: %s) : Internal Error"%(client.host, client.port))
-            response = Response("Internal Error", Status.InternalError)
+            response = Response("Error", Status.BadMessage.value)
+        except Exception as e:
+            self.logger.error("Failed registering new client (%s: %s) : %s"%(client.host, client.port, str(e)))
+            response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
         return response
@@ -62,13 +64,13 @@ class RegistrationServer(Server):
             idx = self.clients.index(c)
             self.clients[idx].flag = Client.FLAG_INACTIVE
             self.logger.info("Removed client (%s: %s)"%(c.host, c.port))
-            response = Response("Success", Status.Success)
+            response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
             self.logger.error("Failed removing client (%s: %s)"%(c.host, c.port))
-            response = Response("Error", Status.BadMessage)
+            response = Response("Error", Status.BadMessage.value)
         except:
             self.logger.error("Failed removing client (%s: %s) : Internal error"%(c.host, c.port))
-            response = Response("Internal Error", Status.InternalError)
+            response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
         return response
@@ -87,13 +89,13 @@ class RegistrationServer(Server):
             self.clients[idx].ttl = Client.TTL
             self.clients[idx].flag = Client.FLAG_ACTIVE
             self.logger.info("Extended TTL for client (%s: %s)"%(c.host, c.port))
-            response = Response("Success", Status.Success)
+            response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
             self.logger.error("Failed extending TTL for client (%s: %s)"%(c.host, c.port))
-            response = Response("Error", Status.BadMessage)
+            response = Response("Error", Status.BadMessage.value)
         except:
             self.logger.error("Failed extending TTL for client (%s: %s) : Internal Error"%(c.host, c.port))
-            response = Response("Internal Error", Status.InternalError)
+            response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
         return response
@@ -101,9 +103,9 @@ class RegistrationServer(Server):
     def _new_message_callback(self, conn, msg):
         """ processes a message """
         p2pmsg = Message()
-        response = Response("Internal Error", Status.InternalError)
+        response = Response("Internal Error", Status.InternalError.value)
         try:
-            p2pmsg.from_str(msg)
+            p2pmsg.from_str(msg.decode('utf-8'))
             def handler(x):
                 return {
                     MethodTypes.Register.name: self._handle_register,
@@ -112,7 +114,7 @@ class RegistrationServer(Server):
                     MethodTypes.KeepAlive.name: self._handle_keep_alive
                 }[x]
             func = handler(p2pmsg.method)
-            response = func(conn, msg)
+            response = func(conn, p2pmsg)
         except Exception as e:
             self.logger.error("Error processing message %s"%str(e))
         finally:
