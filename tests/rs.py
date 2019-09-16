@@ -51,7 +51,7 @@ class RegistrationServerTest(unittest.TestCase):
         for thread in threads:
             thread.join()
         server_thread.join()
-        self.assertEqual(['RES P2Pv1\n\nSuccess', 'RES P2Pv1\n\nSuccess', 'RES P2Pv1\n\nSuccess'], self.buffer)
+        self.assertEqual(['Reponse 200 P2Pv1\n\nSuccess', 'Response 200 P2Pv1\n\nSuccess', 'Response 200 P2Pv1\n\nSuccess'], self.buffer)
 
     def test_stop(self):
         """ stops the server """

@@ -60,11 +60,21 @@ PQuery P2Pv1\n\n<client_nick_name>
 The `p2p.protocol.proto.ServerResponse` ([link](../p2p/protocol/proto.py)) is of the following format :
 
 ```
-RES P2Pv1\n\n<message>
+Response <status_code> P2Pv1\n\n<message>
 ```
 
 The field `<message>` may change based on the original request message.
 
-For `Register`, `KeepAlive`, `Leave` messages, the response contains only Success or Failure message with appropriate status code.
+For `Register`, `KeepAlive`, `Leave` messages, the response contains only Success or Failure message.
 
 For `PQuery` requests, the response contains the list of peer addresses. `['127.0.0.1:9999', '127.0.0.1:3333']`
+
+The status codes are defined as : 
+
+```yaml
+Success: 20
+BadMessage: 400
+MethodNotAllowed: 405
+InternalError: 500
+Unknown: 999
+```
