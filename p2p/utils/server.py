@@ -10,6 +10,9 @@ class Server(object):
     """ multi-client server """
     PORT = 9999
 
+    # reconcile interval
+    INTERVAL = 5
+
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -27,6 +30,10 @@ class Server(object):
         """ callback for new message. override """
         pass
 
+    def _reconcile(self):
+        """ reconcile loop """
+        pass
+
     def start(self, timeout=inf):
         """ starts the server """
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,7 +47,9 @@ class Server(object):
         while not self.stopped and inputs and time.time() < timeout:
             # listen for connections
             self.logger.info("Waiting for next event...")
-            readable, writeable, exceptional = select.select(inputs, outputs, inputs, 5)
+            readable, writeable, exceptional = select.select(inputs, outputs, inputs, Server.INTERVAL)
+            # reconcile state
+            self._reconcile()
             for s in readable:
                 if s is self.conn:
                     conn, client = s.accept()

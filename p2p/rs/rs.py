@@ -16,7 +16,7 @@ class Client(object):
         self.port = port
         self.cookie = "%s: %s"%(host, port)
         self.flag = Client.FLAG_ACTIVE
-        self.ttl = 3600
+        self.ttl = 10
         self.activity = 0 
         self.last_active = 0
 
@@ -44,6 +44,13 @@ class RegistrationServer(Server):
             self.clients.append(client)
         finally:
             self.mutex.release()
+
+    def _reconcile(self):
+        for client in self.clients:
+            client.ttl = client.ttl - Server.INTERVAL
+            if client.ttl <= 0:
+                client.flag = Client.FLAG_INACTIVE
+                self.logger.info("Setting client (%s, %s) inactive"%(client.host, client.port))
 
     def _unregister(self, client):
         """ un-registers a new client """

@@ -41,7 +41,7 @@ class RegistrationServerTest(unittest.TestCase):
         threads = []
         self.buffer = []
         rs = RegistrationServer('127.0.0.1', RegistrationServer.PORT)
-        server_thread = threading.Thread(target=rs.start, kwargs=dict(timeout=15,))
+        server_thread = threading.Thread(target=rs.start, kwargs=dict(timeout=25,))
         server_thread.start()
         time.sleep(5)
         for i in range(3):
