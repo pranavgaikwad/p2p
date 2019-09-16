@@ -115,6 +115,10 @@ class RegistrationServer(Server):
                 }[x]
             func = handler(p2pmsg.method)
             response = func(conn, p2pmsg)
+        except KeyError:
+            self.logger.error("Method not allowed %s"%msg.decode('utf-8'))
+            response.payload = "Method not allowed"
+            response.status = Status.MethodNotAllowed.value
         except Exception as e:
             self.logger.error("Error processing message %s"%str(e))
         finally:
