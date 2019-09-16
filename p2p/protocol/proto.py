@@ -88,7 +88,7 @@ class ServerResponse(Message):
         self.status = ResponseStatus.Unknown
         self.version = Message.VERSION
         self.headers = {
-            Headers.ContentLength.name: len(response.decode('utf-8')),
+            Headers.ContentLength.name: len(response),
         }
         self.payload = response
 
