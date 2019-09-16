@@ -47,3 +47,16 @@ class MyServer(Server):
         """ msg  : the original message as bytes """
         pass
 ```
+
+## The Response Queue
+
+The server holds a dictionary of Message Queues. The keys in this dictionary are the original socket objects which represent an incoming connection.
+
+```python
+self.messages[conn] = queue.Queue()
+```
+
+Here, `conn` represents the connection of the client.
+
+Any message added to this queue at any point of time, will be sent to the client represented by `conn`. This happens in time slices. Messages will be sent in the next time slice.
+
