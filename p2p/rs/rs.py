@@ -37,32 +37,23 @@ class RegistrationServer(Server):
         super().__init__(host, port)
         self.mutex = Lock()
 
-    def _register(self, client):
-        """ registers a new client """
-        self.mutex.acquire()
-        try:
-            self.clients.append(client)
-        finally:
-            self.mutex.release()
-
     def _reconcile(self):
         for client in self.clients:
             client.ttl = client.ttl - Server.INTERVAL
             if client.ttl <= 0:
                 client.flag = Client.FLAG_INACTIVE
                 self.logger.info("Setting client (%s, %s) inactive"%(client.host, client.port))
+            else:
+                client.flag = Client.FLAG_ACTIVE
 
-    def _unregister(self, client):
-        """ un-registers a new client """
-        self.mutex.acquire()
-        try:
-            to_delete = None
-            for idx, c in enumerate(self.clients):
-                if c == client:
-                    to_delete = idx
-            del self.clients[idx]
-        finally:
-            self.mutex.release()
+    def _response(self, payload):
+        """ """
+        msg = Message()
+        msg.method = "RES"
+        msg.version = Message.VERSION
+        msg.payload = payload
+        msg.headers = {}
+        return msg
 
     def _handle_register(self, conn, msg):
         """ handles register request """
@@ -77,11 +68,7 @@ class RegistrationServer(Server):
                 self.clients.remove(client)
             self.clients.append(client)
             self.logger.info("Registered new client (%s: %s)"%(client.host, client.port))
-            msg = Message()
-            msg.method = "RES"
-            msg.version = Message.VERSION
-            msg.payload = "Success"
-            response = str(msg)
+            response = str(self._response("Success"))
         finally:
             self.mutex.release()
         return response
@@ -95,13 +82,9 @@ class RegistrationServer(Server):
             idx = self.clients.index(c)
             self.clients[idx].flag = Client.FLAG_INACTIVE
             self.logger.info("Removed client (%s: %s)"%(c.host, c.port))
-            msg = Message()
-            msg.method = "RES"
-            msg.version = Message.VERSION
-            msg.payload = "Success"
-            response = str(msg)
+            response = str(self._response("Success"))
         except (KeyError, ValueError):
-            self.logger.info("Could not remove client (%s: %s)"%(c.host, c.port))
+            self.logger.error("Could not remove client (%s: %s)"%(c.host, c.port))
         finally:
             self.mutex.release()
         return response
@@ -118,14 +101,11 @@ class RegistrationServer(Server):
         try:
             idx = self.clients.index(c)
             self.clients[idx].ttl = 3600
+            self.clients[idx].flag = Client.FLAG_ACTIVE
             self.logger.info("Extended TTL for client (%s: %s)"%(c.host, c.port))
-            msg = Message()
-            msg.method = "RES"
-            msg.version = Message.VERSION
-            msg.payload = "Success"
-            response = str(msg)
+            response = str(self._response("Success"))
         except (KeyError, ValueError):
-            self.logger.info("Could not extend TTL for client (%s: %s)"%(c.host, c.port))
+            self.logger.error("Could not extend TTL for client (%s: %s)"%(c.host, c.port))
         finally:
             self.mutex.release()
         return response
