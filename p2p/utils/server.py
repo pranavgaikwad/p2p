@@ -44,9 +44,9 @@ class Server(object):
         inputs = [self.conn]
         outputs = []
         timeout = time.time() + timeout
+        self.logger.info("Started server on (%s, %s)"%(self.host, self.port))
         while not self.stopped and inputs and time.time() < timeout:
             # listen for connections
-            self.logger.info("Waiting for next event...")
             readable, writeable, exceptional = select.select(inputs, outputs, inputs, Server.INTERVAL)
             # reconcile state
             self._reconcile()

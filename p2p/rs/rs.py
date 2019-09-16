@@ -4,30 +4,8 @@ import socket
 import select
 from threading import Lock
 from p2p.utils.server import Server
+from p2p.utils.client import ClientEntry as Client
 from p2p.protocol.proto import Message, MethodTypes
-
-class Client(object):
-    FLAG_ACTIVE = 0
-    FLAG_INACTIVE = 1
-
-    """ object to represent a P2PClient in RegistrationServer's list of clients """
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self.cookie = "%s: %s"%(host, port)
-        self.flag = Client.FLAG_ACTIVE
-        self.ttl = 10
-        self.activity = 0 
-        self.last_active = 0
-
-    def __str__(self):
-        return "{ Host : %s Port : %s Cookie : %s Flag : %s TTL : %s Activity : %s Active %s }"%(self.host, self.port, self.cookie, self.flag, self.ttl, self.activity, self.last_active)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __eq__(self, c):
-        return self.host == c.host and self.port == c.port
 
 class RegistrationServer(Server):
     """ Registration Server """
