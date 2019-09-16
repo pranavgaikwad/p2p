@@ -118,3 +118,14 @@ class ServerResponse(Message):
             return self
         except:
             raise ValueError("Invalid message")
+
+    def to_dict(self):
+        """ dict representation of message """
+        return {
+            "method": self.method,
+            "version": self.version,
+            "status": self.status,
+            "headers": self.headers,
+            "payload": self.payload
+        }
+
