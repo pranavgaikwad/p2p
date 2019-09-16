@@ -1,15 +1,15 @@
-
 class ClientEntry(object):
     """ object to represent a P2PClient in RegistrationServer's list of clients """
     FLAG_ACTIVE = 0
     FLAG_INACTIVE = 1
-
+    
+    TTL = 7200
     def __init__(self, host, port):
         self.host = host
         self.port = port
         self.cookie = "%s: %s"%(host, port)
-        self.flag = Client.FLAG_ACTIVE
-        self.ttl = 10
+        self.flag = ClientEntry.FLAG_ACTIVE
+        self.ttl = ClientEntry.TTL
         self.activity = 0 
         self.last_active = 0
 

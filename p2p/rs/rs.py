@@ -5,7 +5,7 @@ import select
 from threading import Lock
 from p2p.utils.server import Server
 from p2p.utils.client import ClientEntry as Client
-from p2p.protocol.proto import Message, MethodTypes
+from p2p.protocol.proto import Message, ServerResponse as Response, MethodTypes
 
 class RegistrationServer(Server):
     """ Registration Server """
@@ -24,15 +24,6 @@ class RegistrationServer(Server):
             else:
                 client.flag = Client.FLAG_ACTIVE
 
-    def _response(self, payload):
-        """ """
-        msg = Message()
-        msg.method = "RES"
-        msg.version = Message.VERSION
-        msg.payload = payload
-        msg.headers = {}
-        return msg
-
     def _handle_register(self, conn, msg):
         """ handles register request """
         host = conn.getpeername()[0]
@@ -43,10 +34,13 @@ class RegistrationServer(Server):
         try:
             # TODO: improve logic
             if client in self.clients:
-                self.clients.remove(client)
-            self.clients.append(client)
+                idx = self.clients.index(client)
+                self.clients[idx].ttl = Client.TTL
+                self.clients[idx].flag = Client.FLAG_ACTIVE
+            else:
+                self.clients.append(client)
             self.logger.info("Registered new client (%s: %s)"%(client.host, client.port))
-            response = str(self._response("Success"))
+            response = Response("Success")
         finally:
             self.mutex.release()
         return response
@@ -60,9 +54,10 @@ class RegistrationServer(Server):
             idx = self.clients.index(c)
             self.clients[idx].flag = Client.FLAG_INACTIVE
             self.logger.info("Removed client (%s: %s)"%(c.host, c.port))
-            response = str(self._response("Success"))
+            response = Response("Success")
         except (KeyError, ValueError):
             self.logger.error("Could not remove client (%s: %s)"%(c.host, c.port))
+            response = Response("Error")
         finally:
             self.mutex.release()
         return response
@@ -78,12 +73,13 @@ class RegistrationServer(Server):
         response = ""
         try:
             idx = self.clients.index(c)
-            self.clients[idx].ttl = 3600
+            self.clients[idx].ttl = Client.TTL
             self.clients[idx].flag = Client.FLAG_ACTIVE
             self.logger.info("Extended TTL for client (%s: %s)"%(c.host, c.port))
-            response = str(self._response("Success"))
+            response = Response("Success")
         except (KeyError, ValueError):
             self.logger.error("Could not extend TTL for client (%s: %s)"%(c.host, c.port))
+            response = Response("Error")
         finally:
             self.mutex.release()
         return response
@@ -102,7 +98,8 @@ class RegistrationServer(Server):
                 }[x]
             func = handler(p2pmsg.method)
             response = func(conn, msg)
-            self.messages[conn].put(bytes(str(response), 'utf-8'))
+            # send response back in the message queue (socket delivers it in the next time slice)
+            self.messages[conn].put(response.to_bytes())
         except Exception as e:
             self.logger.error("Error processing message %s"%str(e))
 

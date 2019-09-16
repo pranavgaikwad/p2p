@@ -71,3 +71,12 @@ class Message(object):
             "payload": self.payload
         }
 
+class ServerResponse(Message):
+    """ a special message sent by server as a response """
+    def __init__(self, response):
+        self.method = "RES"
+        self.version = Message.VERSION
+        self.headers = {
+            Headers.ContentLength.name: len(response.decode('utf-8')),
+        }
+        self.payload = response
