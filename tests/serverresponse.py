@@ -7,37 +7,36 @@ class ServerResponseTest(unittest.TestCase):
     """ a generic message used by servers and clients both """
     def test_to_dict(self):
         """ message to dict """
-        msg_str = "Response 200 P2Pv1\nContentLength: 100\nContentType: text\n\nPayload"
+        msg_str = "Response 200 P2Pv1\nContentLength: 7\n\nSuccess"
         e = {
-            "method": "GET",
+            "method": "Response",
             "version": "P2Pv1",
             "status": "200",
             "headers": {
-                    "ContentLength": "100",
-                    "ContentddType": "text"
+                    "ContentLength": "7",
                 },
-            "payload": "Payload"
+            "payload": "Success"
         }
-        msg = Message()
+        msg = Message("Success", Status.Success.value)
         msg.from_str(msg_str)
         self.assertEqual(msg.to_dict(), e)
 
-        msg_str = "Response 400 P2Pv1\nContentLength: 20\n\nAnother Payload"
+        msg_str = "Response 400 P2Pv1\nContentLength: 6\n\nFailed"
         e = {
-            "method": "GET",
+            "method": "Response",
             "version": "P2Pv1",
             "status": "400",
             "headers": {
-                    "ContentLength": "20"
+                    "ContentLength": "6",
                 },
-            "payload": "Another Payload"
+            "payload": "Failed"
         }
-        msg = Message()
+        msg = Message("Failed", Status.BadMessage.value)
         msg.from_str(msg_str)
         self.assertEqual(msg.to_dict(), e)
 
         msg_str = ""
-        msg = Message()
+        msg = Message("Failed", 0)
         with self.assertRaises(ValueError):
             msg.from_str(msg_str)
 
@@ -45,7 +44,7 @@ class ServerResponseTest(unittest.TestCase):
     def test_str(self):
         """ string representation of message """
         msg = Message("Success", Status.Success.value)
-        self.assertEqual(str(msg), "Register 200 P2Pv1\n\nSuccess")
+        self.assertEqual(str(msg), "Response 200 P2Pv1\n\nSuccess")
         pass 
 
 if __name__ == "__main__":

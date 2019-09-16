@@ -74,23 +74,18 @@ class Message(object):
 
     def to_dict(self):
         """ dict representation of message """
-        return {
-            "method": self.method,
-            "version": self.version,
-            "headers": self.headers,
-            "payload": self.payload
-        }
+        d = self.__dict__
+        del d['logger']
+        return d
 
 class ServerResponse(Message):
     """ a special message sent by server as a response """
     def __init__(self, response, status):
+        super(ServerResponse, self).__init__()
         self.method = MethodTypes.Response.name
         self.status = status
-        self.version = Message.VERSION
-        self.headers = {
-            Headers.ContentLength.name: len(response),
-        }
         self.payload = response
+        self.version = Message.VERSION
 
     def __str__(self):
         headers_str = ""
@@ -119,13 +114,6 @@ class ServerResponse(Message):
         except:
             raise ValueError("Invalid message")
 
-    def to_dict(self):
-        """ dict representation of message """
-        return {
-            "method": self.method,
-            "version": self.version,
-            "status": self.status,
-            "headers": self.headers,
-            "payload": self.payload
-        }
-
+    def get_peer_list(self):
+        """ helper to parse list of peers from response """
+        pass
