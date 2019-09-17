@@ -32,7 +32,7 @@ class RegistrationServer(Server):
         host = conn.getpeername()[0]
         port = conn.getpeername()[1]
         self.mutex.acquire()
-        response = ""
+        response = Response("Success", Status.Success.value)
         client = Client(host=host, port=port)
         try:
             p2port = msg.payload.split('\n')[1]
@@ -60,7 +60,7 @@ class RegistrationServer(Server):
         """ handles leave request """
         self.mutex.acquire()
         c = Client(conn.getpeername()[0], conn.getpeername()[1])
-        response = ""
+        response = Response("Success", Status.Success.value)
         try:
             idx = self.clients.index(c)
             self.clients[idx].flag = Client.FLAG_INACTIVE
@@ -78,13 +78,21 @@ class RegistrationServer(Server):
     
     def _handle_pquery(self, conn, msg):
         """ handles query request """
-        pass
+        response = Response("Success", Status.Success.value)
+        try:
+            res = ""
+            for c in self.clients:
+                res = "%s%s,"%(res, str(c))
+            response.payload = res
+        except Exception as e:
+            self.logger.error("Failed querying list of clients : %s"%str(e))
+        return response
 
     def _handle_keep_alive(self, conn, msg):
         """ handles keep-alive request """
         self.mutex.acquire()
         c = Client(conn.getpeername()[0], conn.getpeername()[1])
-        response = ""
+        response = Response("Success", Status.Success.value)
         try:
             idx = self.clients.index(c)
             self.clients[idx].ttl = Client.TTL
@@ -105,7 +113,7 @@ class RegistrationServer(Server):
         """ processes a message """
         p2pmsg = Message()
         start_time = datetime.datetime.now()
-        response = Response("Internal Error", Status.InternalError.value)
+        response = Response("Success", Status.Success.value)
         try:
             p2pmsg.from_str(msg.decode('utf-8'))
             def handler(x):
@@ -118,7 +126,7 @@ class RegistrationServer(Server):
             func = handler(p2pmsg.method)
             response = func(conn, p2pmsg)
         except KeyError:
-            self.logger.error("Method not allowed %s"%msg.decode('utf-8'))
+            self.logger.error("Method not allowed %s"%msg)
             response.payload = "Method not allowed"
             response.status = Status.MethodNotAllowed.value
         except Exception as e:

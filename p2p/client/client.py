@@ -35,7 +35,7 @@ class ClientEntry(object):
         self.last_active = 0
 
     def __str__(self):
-        return "{ Host : %s Port : %s Cookie : %s Flag : %s TTL : %s Activity : %s Active %s }"%(self.host, self.port, self.cookie, self.flag, self.ttl, self.activity, self.last_active)
+        return "%s:%s"%(self.host, self.p2port)
 
     def __repr__(self):
         return self.__str__()
