@@ -1,11 +1,11 @@
 # Server
 
-The `p2p.utils.server.Server` ([link](../p2p/utils/server.py)) is an abstraction over the underlying multi-client socket implemented using `select()` system call.
+The `p2p.server.server.Server` ([server.py](../p2p/server/server.py)) is an abstraction over the underlying multi-client socket implemented using `select()` system call.
 
 Any class that extends the `Server` class has the ability to launch a server using `start()` method.
 
 ```python
-from p2p.utils.server import Server
+from p2p.server.server import Server
 
 class MyServer(Server):
     def __init__(self, host, port):

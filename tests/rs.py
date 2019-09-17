@@ -2,8 +2,8 @@ import time
 import socket 
 import unittest
 import threading
-from p2p.rs.rs import RegistrationServer
-from p2p.protocol.proto import Message, MethodTypes
+from p2p.server.rs import RegistrationServer
+from p2p.proto.proto import Message, MethodTypes
 
 class RegistrationServerTest(unittest.TestCase): 
     """ Registration Server Tests"""

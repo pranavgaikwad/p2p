@@ -13,7 +13,7 @@ Each entry in the list of clients has following information about the client :
 - activity in the last 30 days
 - last registration date
 
-Each entry is encapsulated as an object of class `p2p.utils.client.ClientEntry` ([link](../p2p/utils/client.py)).
+Each entry is encapsulated as an object of class `p2p.client.client.ClientEntry` ([client.py](../p2p/client/client.py)).
 
 ## Client List
 
@@ -23,7 +23,7 @@ Depending on whether the list of clients should persist or not, following implem
 
 ## Interfacing
 
-Server runs on a well-known port given by `RegistrationServer.PORT` ([link](../p2p/rs/rs.py)). It listens for messages of type `p2p.protocol.proto.Message` ([link](../p2p/protocol/proto.py)).
+Server runs on a well-known port given by `RegistrationServer.PORT` ([rs.py](../p2p/server/rs.py)). It listens for messages of type `p2p.proto.proto.Message` ([link](../p2p/proto/proto.py)).
 
 ### Messages
 
@@ -57,7 +57,7 @@ PQuery P2Pv1\n\n<client_nick_name>
 
 ### Response
 
-The `p2p.protocol.proto.ServerResponse` ([link](../p2p/protocol/proto.py)) is of the following format :
+The `p2p.proto.proto.ServerResponse` ([proto.py](../p2p/proto/proto.py)) is of the following format :
 
 ```
 Response <status_code> P2Pv1\n\n<message>

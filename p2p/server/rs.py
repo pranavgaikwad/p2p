@@ -2,11 +2,12 @@ import sys
 import queue
 import socket
 import select
+import datetime
 from threading import Lock
-from p2p.utils.server import Server
-from p2p.utils.client import ClientEntry as Client
-from p2p.protocol.proto import Message, ServerResponse as Response
-from p2p.protocol.proto import ResponseStatus as Status, MethodTypes
+from p2p.server.server import Server
+from p2p.client.client import ClientEntry as Client
+from p2p.proto.proto import Message, ServerResponse as Response
+from p2p.proto.proto import ResponseStatus as Status, MethodTypes
 
 class RegistrationServer(Server):
     """ Registration Server """
@@ -103,6 +104,7 @@ class RegistrationServer(Server):
     def _new_message_callback(self, conn, msg):
         """ processes a message """
         p2pmsg = Message()
+        start_time = datetime.datetime.now()
         response = Response("Internal Error", Status.InternalError.value)
         try:
             p2pmsg.from_str(msg.decode('utf-8'))
@@ -122,6 +124,9 @@ class RegistrationServer(Server):
         except Exception as e:
             self.logger.error("Error processing message %s"%str(e))
         finally:
+            end_time = datetime.datetime.now()
+            self.logger.info("Took %s ms to process request %s"%
+                    ((end_time-start_time).microseconds/1000, p2pmsg.method))
             # send some message back to the client no matter what
             self.messages[conn].put(response.to_bytes())
 

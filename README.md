@@ -60,8 +60,8 @@ python proto.py
 #### Run RegistrationServer
 
 ```bash
-# change to RS directory
-cd ./p2p/rs/
+# switch to server sub-directory
+cd ./p2p/server/
 
 # run server
 python rs.py

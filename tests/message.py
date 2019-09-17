@@ -1,4 +1,4 @@
-from p2p.protocol.proto import Message, Headers, MethodTypes
+from p2p.proto.proto import Message, Headers, MethodTypes
 import unittest
 # defines protocols required by P2P-DI System
 

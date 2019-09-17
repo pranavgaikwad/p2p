@@ -1,5 +1,5 @@
-from p2p.protocol.proto import ServerResponse as Message, ResponseStatus as Status
-from p2p.protocol.proto import Headers, MethodTypes
+from p2p.proto.proto import ServerResponse as Message, ResponseStatus as Status
+from p2p.proto.proto import Headers, MethodTypes
 import unittest
 # defines protocols required by P2P-DI System
 
