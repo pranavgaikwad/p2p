@@ -1,0 +1,16 @@
+README.md
+setup.py
+P2P.egg-info/PKG-INFO
+P2P.egg-info/SOURCES.txt
+P2P.egg-info/dependency_links.txt
+P2P.egg-info/top_level.txt
+p2p/__init__.py
+p2p/client/__init__.py
+p2p/client/client.py
+p2p/proto/__init__.py
+p2p/proto/proto.py
+p2p/server/__init__.py
+p2p/server/rs.py
+p2p/server/server.py
+p2p/utils/__init__.py
+p2p/utils/logger.py

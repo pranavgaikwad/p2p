@@ -47,17 +47,10 @@ source venv/bin/activate
 Run tests :
 
 ```bash
-# switch to tests directory
-cd ./tests/
-
-# run RS tests
-python rs.py
-
-# run protocol tests
-python proto.py
+python setup.py test
 ```
 
-#### Run RegistrationServer
+Run Registration Server alone :
 
 ```bash
 # switch to server sub-directory
@@ -66,8 +59,5 @@ cd ./p2p/server/
 # run server
 python rs.py
 ```
-
-
-
 
 
