@@ -24,24 +24,17 @@ Create virtualenv :
 virtualenv --python=<path_to_python_3.7_executable> venv		# starts a virtualenv in "p2p" directory
 ```
 
-Build in dev mode : 
-
-```bash
-# change to deploy directory
-cd ./deploy
-
-# build the project
-./build.sh
-```
-
 Start virtualenv : 
 
 ```bash
-# change to p2p (project root) directory
-cd ../
-
 # start venv
 source venv/bin/activate
+```
+
+Install :
+
+```bash
+python setup.py install
 ```
 
 Run tests :
