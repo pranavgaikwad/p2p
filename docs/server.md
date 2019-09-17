@@ -17,7 +17,7 @@ newServer.start() # starts the server
 
 The `Server` class provides with 3 callback methods to give more control over message and connected clients.
 
-### The Reconcile Callback
+## Reconcile 
 
 The server runs in an infinite loop calling `_reconcile()` method every 5 seconds. This is the best place to update the state of the child server.
 
@@ -29,7 +29,7 @@ class MyServer(Server):
         pass
 ```
 
-## The Message Callback
+## Message Callback
 
 This is triggered when the server receives a new message. Handle the new message in this method.
 
@@ -43,7 +43,7 @@ class MyServer(Server):
         pass
 ```
 
-## The Connection Callback
+## Connection Callback
 Whenever the server receives a new connection, this method is triggered.
 
 ```python
@@ -55,7 +55,7 @@ class MyServer(Server):
         pass
 ```
 
-## The Response Queue
+## Response Queue
 
 The server holds a dictionary of Message Queues. These are the messages sent back to connected clients. A message for a particular client is indexed by the client's `conn` object. 
 
