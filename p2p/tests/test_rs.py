@@ -1,20 +1,22 @@
 import time
-import socket 
+import socket
 import unittest
 import threading
 from p2p.server.rs import RegistrationServer
 from p2p.proto.proto import Message, MethodTypes
 
-class RegistrationServerTest(unittest.TestCase): 
+
+class RegistrationServerTest(unittest.TestCase):
     """ Registration Server Tests"""
+
     def test_register(self):
         """ registers a new client """
         pass
-    
+
     def test_unregister(self):
         """ un-registers a new client """
         pass
-    
+
     def _socket_connect_test(self):
         """ connects to a server socket """
         client = socket.socket()
@@ -57,7 +59,7 @@ class RegistrationServerTest(unittest.TestCase):
         self.buffer = []
         self.fail_buffer = []
         rs = RegistrationServer('127.0.0.1', RegistrationServer.PORT)
-        server_thread = threading.Thread(target=rs.start, kwargs=dict(timeout=30,))
+        server_thread = threading.Thread(target=rs.start, kwargs=dict(timeout=30, ))
         server_thread.start()
         time.sleep(5)
         # test success tests
@@ -78,6 +80,7 @@ class RegistrationServerTest(unittest.TestCase):
     def test_stop(self):
         """ stops the server """
         pass
+
 
 if __name__ == "__main__":
     unittest.main()

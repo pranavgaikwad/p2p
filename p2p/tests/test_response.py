@@ -1,10 +1,13 @@
 from p2p.proto.proto import ServerResponse as Message, ResponseStatus as Status
 from p2p.proto.proto import Headers, MethodTypes
 import unittest
+
+
 # defines protocols required by P2P-DI System
 
 class ServerResponseTest(unittest.TestCase):
     """ a generic message used by servers and clients both """
+
     def test_to_dict(self):
         """ message to dict """
         msg_str = "Response 200 P2Pv1\nContentLength: 7\n\nSuccess"
@@ -13,8 +16,8 @@ class ServerResponseTest(unittest.TestCase):
             "version": "P2Pv1",
             "status": "200",
             "headers": {
-                    "ContentLength": "7",
-                },
+                "ContentLength": "7",
+            },
             "payload": "Success"
         }
         msg = Message("Success", Status.Success.value)
@@ -27,8 +30,8 @@ class ServerResponseTest(unittest.TestCase):
             "version": "P2Pv1",
             "status": "400",
             "headers": {
-                    "ContentLength": "6",
-                },
+                "ContentLength": "6",
+            },
             "payload": "Failed"
         }
         msg = Message("Failed", Status.BadMessage.value)
@@ -40,12 +43,12 @@ class ServerResponseTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             msg.from_str(msg_str)
 
-
     def test_str(self):
         """ string representation of message """
         msg = Message("Success", Status.Success.value)
         self.assertEqual(str(msg), "Response 200 P2Pv1\n\nSuccess")
-        pass 
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

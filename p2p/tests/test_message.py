@@ -1,9 +1,12 @@
 from p2p.proto.proto import Message, Headers, MethodTypes
 import unittest
+
+
 # defines protocols required by P2P-DI System
 
 class MessageTest(unittest.TestCase):
     """ a generic message used by servers and clients both """
+
     def test_to_dict(self):
         """ message to dict """
         msg_str = "GET P2Pv1\nContentLength: 100\nContentType: text\n\nPayload"
@@ -11,9 +14,9 @@ class MessageTest(unittest.TestCase):
             "method": "GET",
             "version": "P2Pv1",
             "headers": {
-                    "ContentLength": "100",
-                    "ContentType": "text"
-                },
+                "ContentLength": "100",
+                "ContentType": "text"
+            },
             "payload": "Payload"
         }
         msg = Message()
@@ -25,8 +28,8 @@ class MessageTest(unittest.TestCase):
             "method": "GET",
             "version": "P2Pv1",
             "headers": {
-                    "ContentLength": "20"
-                },
+                "ContentLength": "20"
+            },
             "payload": "Another Payload"
         }
         msg = Message()
@@ -38,7 +41,6 @@ class MessageTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             msg.from_str(msg_str)
 
-
     def test_str(self):
         """ string representation of message """
         msg = Message()
@@ -47,7 +49,8 @@ class MessageTest(unittest.TestCase):
         msg.version = Message.VERSION
         msg.payload = "Payload"
         self.assertEqual(str(msg), "Register P2Pv1\n\nPayload")
-        pass 
+        pass
+
 
 if __name__ == "__main__":
     unittest.main()

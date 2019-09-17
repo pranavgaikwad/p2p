@@ -2,22 +2,27 @@ import struct
 import logging
 from enum import Enum
 
+
 class MethodTypes(Enum):
     # peer to RS
     Register = 1
-    Leave = 2 
+    Leave = 2
     PQuery = 3
     KeepAlive = 4
+
     # peer to peer
-    RFCQuery = 5 
+    RFCQuery = 5
     GetRFC = 6
+
     # special response types
     Response = 7
+
 
 class Headers(Enum):
     """ headers """
     ContentLength = 1
     ContentType = 2
+
 
 class ResponseStatus(Enum):
     """ server response status """
@@ -27,15 +32,16 @@ class ResponseStatus(Enum):
     InternalError = 500
     Unknown = 999
 
+
 # defines protocols required by P2P-DI System
 class Message(object):
     """ message """
     VERSION = "P2Pv1"
 
-    # separators 
-    SR_HEADERS="\n"
-    SR_FIELDS=" "
-    
+    # separators
+    SR_HEADERS = "\n"
+    SR_FIELDS = " "
+
     def __init__(self):
         self.method = ""
         self.version = ""
@@ -63,14 +69,14 @@ class Message(object):
             self.payload = payload
             return self
         except Exception as e:
-            raise ValueError("Invalid message %s"%str(e))
+            raise ValueError("Invalid message %s" % str(e))
 
     def __str__(self):
         headers_str = ""
         for header, value in self.headers.items():
-            headers_str = "%s%s: %s\n"%(headers_str, header, value)
-        return "%s%s%s%s%s%s%s"%(self.method, self.SR_FIELDS, self.version,
-            self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
+            headers_str = "%s%s: %s\n" % (headers_str, header, value)
+        return "%s%s%s%s%s%s%s" % (self.method, self.SR_FIELDS, self.version,
+                                   self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
 
     def to_dict(self):
         """ dict representation of message """
@@ -78,8 +84,10 @@ class Message(object):
         del d['logger']
         return d
 
+
 class ServerResponse(Message):
     """ a special message sent by server as a response """
+
     def __init__(self, response, status):
         super(ServerResponse, self).__init__()
         self.method = MethodTypes.Response.name
@@ -90,9 +98,9 @@ class ServerResponse(Message):
     def __str__(self):
         headers_str = ""
         for header, value in self.headers.items():
-            headers_str = "%s%s: %s\n"%(headers_str, header, value)
-        return "%s%s%s%s%s%s%s%s%s"%(self.method, self.SR_FIELDS, self.status, self.SR_FIELDS, self.version,
-            self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
+            headers_str = "%s%s: %s\n" % (headers_str, header, value)
+        return "%s%s%s%s%s%s%s%s%s" % (self.method, self.SR_FIELDS, self.status, self.SR_FIELDS, self.version,
+                                       self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
 
     def from_str(self, msg):
         """ loads a message from string """

@@ -3,4 +3,5 @@ __pycache__/
 *.swp
 *.egg-info
 venv
+p2p-venv
 dist

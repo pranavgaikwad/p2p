@@ -1,5 +1,6 @@
 import unittest
 
+
 class P2PClient(unittest.TestCase):
     """ Peer to Peer Client Test """
 
@@ -14,4 +15,3 @@ class P2PClient(unittest.TestCase):
     def test_receive(self):
         """ receives a message """
         pass
-    
