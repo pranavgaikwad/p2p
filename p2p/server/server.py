@@ -17,7 +17,7 @@ class Server(object):
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.clients = []
+        self.clients = {}
         self.stopped = False
         self.conn = None
         self.logger = logger()
@@ -96,7 +96,6 @@ class Server(object):
         """ stops the server """
         self.stopped = True
         try:
-            self.conn.shutdown(1)
             self.conn.close()
-        except OSError:
-            self.logger.error('Error shutting down socket...')
+        except OSError as e:
+            self.logger.error('Error shutting down socket... {}'.format(e))

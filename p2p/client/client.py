@@ -45,3 +45,6 @@ class ClientEntry(object):
 
     def __eq__(self, c):
         return self.host == c.host and self.port == c.port
+
+    def id(self):
+        return "{}:{}".format(self.host, self.p2port)

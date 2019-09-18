@@ -20,38 +20,29 @@ class RegistrationServer(Server):
 
     def _reconcile(self):
         """ reconcile state of the server periodically """
-        for client in self.clients:
-            client.ttl = client.ttl - Server.INTERVAL
-            if client.ttl <= 0:
-                client.flag = Client.FLAG_INACTIVE
-                self.logger.info("Setting client (%s, %s) inactive" % (client.host, client.port))
-            else:
-                client.flag = Client.FLAG_ACTIVE
+        for _, client in self.clients.items():
+            if client.flag is Client.FLAG_ACTIVE:
+                client.ttl = client.ttl - Server.INTERVAL
+                if client.ttl <= 0:
+                    client.flag = Client.FLAG_INACTIVE
+                    self.logger.info("Setting client {} inactive".format(client))
 
     def _handle_register(self, conn, msg):
         """ handles register request """
         host = conn.getpeername()[0]
         port = conn.getpeername()[1]
         self.mutex.acquire()
-        response = Response("Success", Status.Success.value)
-        client = Client(host=host, port=port)
         try:
             p2port = msg.payload.split('\n')[1]
-            client.p2port = p2port
-            # TODO: improve logic
-            if client in self.clients:
-                idx = self.clients.index(client)
-                self.clients[idx].ttl = Client.TTL
-                self.clients[idx].flag = Client.FLAG_ACTIVE
-            else:
-                self.clients.append(client)
-            self.logger.info("Registered new client (%s: %s)" % (client.host, p2port))
+            client = Client(host=host, port=port, p2port=p2port)
+            self.clients[client.id()] = client
+            self.logger.info("Registered new client {}".format(client))
             response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
-            self.logger.error("Failed registering new client (%s: %s) : Bad Message" % (client.host, client.port))
+            self.logger.error("Failed registering new client {}: Bad Message".format(client))
             response = Response("Error", Status.BadMessage.value)
         except Exception as e:
-            self.logger.error("Failed registering new client (%s: %s) : %s" % (client.host, client.port, str(e)))
+            self.logger.error("Failed registering new client {}: {}".format(client, e))
             response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
@@ -59,19 +50,21 @@ class RegistrationServer(Server):
 
     def _handle_leave(self, conn, msg):
         """ handles leave request """
+        host = conn.getpeername()[0]
+        port = conn.getpeername()[1]
         self.mutex.acquire()
-        c = Client(conn.getpeername()[0], conn.getpeername()[1])
-        response = Response("Success", Status.Success.value)
         try:
-            idx = self.clients.index(c)
-            self.clients[idx].flag = Client.FLAG_INACTIVE
-            self.logger.info("Removed client (%s: %s)" % (c.host, c.port))
+            p2port = msg.payload.split('\n')[1]
+            client = Client(host=host, port=port, p2port=p2port)
+            self.clients[client.id()].ttl = 0
+            self.clients[client.id()].flag = Client.FLAG_INACTIVE
+            self.logger.info("Removed client {}".format(client))
             response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
-            self.logger.error("Failed removing client (%s: %s)" % (c.host, c.port))
+            self.logger.error("Failed removing client {}".format(client))
             response = Response("Error", Status.BadMessage.value)
-        except:
-            self.logger.error("Failed removing client (%s: %s) : Internal error" % (c.host, c.port))
+        except Exception as e:
+            self.logger.error("Failed removing client {}: {}".format(client, e))
             response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
@@ -81,30 +74,28 @@ class RegistrationServer(Server):
         """ handles query request """
         response = Response("Success", Status.Success.value)
         try:
-            res = ""
-            for c in self.clients:
-                res = "%s%s," % (res, str(c))
-            response.payload = res
+            response.payload = ','.join(self.clients.keys())
         except Exception as e:
             self.logger.error("Failed querying list of clients : %s" % str(e))
         return response
 
     def _handle_keep_alive(self, conn, msg):
         """ handles keep-alive request """
+        host = conn.getpeername()[0]
+        port = conn.getpeername()[1]
         self.mutex.acquire()
-        c = Client(conn.getpeername()[0], conn.getpeername()[1])
-        response = Response("Success", Status.Success.value)
         try:
-            idx = self.clients.index(c)
-            self.clients[idx].ttl = Client.TTL
-            self.clients[idx].flag = Client.FLAG_ACTIVE
-            self.logger.info("Extended TTL for client (%s: %s)" % (c.host, c.port))
+            p2port = msg.payload.split('\n')[1]
+            client = Client(host=host, port=port, p2port=p2port)
+            self.clients[client.id()].ttl = Client.TTL
+            self.clients[client.id()].flag = Client.FLAG_INACTIVE
+            self.logger.info("Extended TTL for client {}".format(client))
             response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
-            self.logger.error("Failed extending TTL for client (%s: %s)" % (c.host, c.port))
+            self.logger.error("Failed extending TTL for client {}".format(client))
             response = Response("Error", Status.BadMessage.value)
-        except:
-            self.logger.error("Failed extending TTL for client (%s: %s) : Internal Error" % (c.host, c.port))
+        except Exception as e:
+            self.logger.error("Failed extending TTL for client {}: {}".format(client, e))
             response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()

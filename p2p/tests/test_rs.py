@@ -1,9 +1,12 @@
+import random
 import time
 import socket
 import unittest
 import threading
 from p2p.server.rs import RegistrationServer
 from p2p.proto.proto import Message, MethodTypes
+
+random.seed(0)
 
 
 class RegistrationServerTest(unittest.TestCase):
@@ -26,7 +29,7 @@ class RegistrationServerTest(unittest.TestCase):
         msg.method = MethodTypes.Register.name
         msg.headers = {}
         msg.version = Message.VERSION
-        msg.payload = "nick-name\n7000"
+        msg.payload = "nick-name\n{}".format(random.randint(7000, 8000))
         client.send(msg.to_bytes())
         data = client.recv(1024)
         msg.method = MethodTypes.KeepAlive.name
@@ -70,6 +73,7 @@ class RegistrationServerTest(unittest.TestCase):
             thread.start()
         for thread in threads:
             thread.join()
+
         server_thread.join()
         expected = 'Response 200 P2Pv1\n\nSuccess'
 
