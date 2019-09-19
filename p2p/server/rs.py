@@ -84,7 +84,12 @@ class RegistrationServer(Server):
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
-            response.payload = ','.join(self.clients.keys())
+
+            active_peers = []
+            for _id, _client in self.clients.items():
+                if _client.flag is Client.FLAG_ACTIVE:
+                    active_peers.append(_id)
+            response.payload = ','.join(active_peers)
         except ForbiddenError:
             self.logger.error("Forbidden client: {}".format(self.clients[client]))
             response = Response("Forbidden", Status.Forbidden.value)
