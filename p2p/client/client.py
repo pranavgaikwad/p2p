@@ -1,4 +1,4 @@
-import socket
+from socket import socket, AF_INET, SOCK_STREAM
 import random
 from p2p.utils.logger import logger
 from p2p.server.server import Server
@@ -21,48 +21,44 @@ class P2PServer(Server):
 
     def _on_start(self):
         """ register this peer """
-        conn = socket.socket()
-        conn.connect(('127.0.0.1', RS_PORT))
+        with socket(AF_INET, SOCK_STREAM) as conn:
+            conn.connect(('127.0.0.1', RS_PORT))
 
-        msg = Message()
-        msg.method = MethodTypes.Register.name
-        msg.headers = {}
-        msg.version = Message.VERSION
-        msg.payload = "{}\n{}".format(self.host, self.port)
+            msg = Message()
+            msg.method = MethodTypes.Register.name
+            msg.headers = {}
+            msg.version = Message.VERSION
+            msg.payload = "{}\n{}".format(self.host, self.port)
 
-        try:
-            conn.send(msg.to_bytes())
-            response = ServerResponse().from_str(conn.recv(1024).decode("utf-8"))
-            self.cookie = response.headers[Headers.Cookie.name]
-            self.logger.info("Peer registered")
-        except Exception as e:
-            self.logger.error("Error while registering Peer: {}".format(e))
-        finally:
-            conn.close()
+            try:
+                conn.send(msg.to_bytes())
+                response = ServerResponse().from_str(conn.recv(1024).decode("utf-8"))
+                self.cookie = response.headers[Headers.Cookie.name]
+                self.logger.info("Peer registered")
+            except Exception as e:
+                self.logger.error("Error while registering Peer: {}".format(e))
 
     def _reconcile(self):
         """ reconcile state of the server periodically """
-        conn = socket.socket()
-        conn.connect(('127.0.0.1', RS_PORT))
+        with socket(AF_INET, SOCK_STREAM) as conn:
+            conn.connect(('127.0.0.1', RS_PORT))
 
-        msg = Message()
-        msg.method = MethodTypes.KeepAlive.name
-        msg.headers = {Headers.Cookie.name: self.cookie}
-        msg.version = Message.VERSION
-        msg.payload = "{}\n{}".format(self.host, self.port)
+            msg = Message()
+            msg.method = MethodTypes.KeepAlive.name
+            msg.headers = {Headers.Cookie.name: self.cookie}
+            msg.version = Message.VERSION
+            msg.payload = "{}\n{}".format(self.host, self.port)
 
-        try:
-            conn.send(msg.to_bytes())
-            response = ServerResponse().from_str(conn.recv(1024).decode("utf-8"))
-            if int(response.status) == 403:
-                raise ForbiddenError(response.payload)
-            self.logger.info("TTL extended")
-        except ForbiddenError as e:
-            self.logger.error(e)
-        except Exception as e:
-            self.logger.error("Error while extending TTL: {}".format(e))
-        finally:
-            conn.close()
+            try:
+                conn.send(msg.to_bytes())
+                response = ServerResponse().from_str(conn.recv(1024).decode("utf-8"))
+                if int(response.status) == 403:
+                    raise ForbiddenError(response.payload)
+                self.logger.info("TTL extended")
+            except ForbiddenError as e:
+                self.logger.error(e)
+            except Exception as e:
+                self.logger.error("Error while extending TTL: {}".format(e))
 
     def _new_message_callback(self, conn, msg):
         """ processes a message """
