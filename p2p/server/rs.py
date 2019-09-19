@@ -1,4 +1,3 @@
-import sys
 import random
 import datetime
 from threading import Lock
@@ -7,13 +6,13 @@ from p2p.client.client import ClientEntry as Client
 from p2p.proto.proto import Message, ServerResponse as Response
 from p2p.proto.proto import ResponseStatus as Status, MethodTypes
 from p2p.proto.proto import Headers, ForbiddenError
+from p2p.utils.app_constants import RS_PORT
 
 random.seed(0)
 
 
 class RegistrationServer(Server):
     """ Registration Server """
-    PORT = 9999
 
     def __init__(self, host, port):
         super().__init__(host, port)
@@ -53,7 +52,6 @@ class RegistrationServer(Server):
     def _handle_leave(self, conn, msg):
         """ handles leave request """
         host = conn.getpeername()[0]
-        port = conn.getpeername()[1]
         self.mutex.acquire()
         try:
             p2port = msg.payload.split('\n')[1]
@@ -106,13 +104,13 @@ class RegistrationServer(Server):
             self.clients[client].ttl = Client.TTL
             self.clients[client].flag = Client.FLAG_INACTIVE
             self.logger.info("Extended TTL for client {}".format(self.clients[client]))
-            response = Response("Success", Status.Success.value)
+            response = Response("Success: TTL Extended", Status.Success.value)
         except (KeyError, ValueError) as e:
             self.logger.error("Failed extending TTL for client {}: {}".format(self.clients[client], e))
             response = Response("Error", Status.BadMessage.value)
         except ForbiddenError:
             self.logger.error("Forbidden client: {}".format(self.clients[client]))
-            response = Response("Forbidden", Status.Forbidden.value)
+            response = Response("Forbidden: Invalid cookie", Status.Forbidden.value)
         except Exception as e:
             self.logger.error("Failed extending TTL for client {}: {}".format(self.clients[client], e))
             response = Response("Internal Error", Status.InternalError.value)
@@ -144,6 +142,8 @@ class RegistrationServer(Server):
             response.status = Status.MethodNotAllowed.value
         except Exception as e:
             self.logger.error("Error processing message %s" % str(e))
+            response.payload = "Unknown error encountered"
+            response.status = Status.Unknown.value
         finally:
             end_time = datetime.datetime.now()
             self.logger.info("Took %s ms to process request %s" %
@@ -164,7 +164,7 @@ class RegistrationServer(Server):
 
 
 if __name__ == "__main__":
-    rs = RegistrationServer("127.0.0.1", 9999)
+    rs = RegistrationServer("127.0.0.1", RS_PORT)
     try:
         rs.start()
     except Exception as err:

@@ -1,8 +1,9 @@
-import sys
+import socket
+import random
 from p2p.utils.logger import logger
 from p2p.server.server import Server
-from p2p.server.rs import RegistrationServer
-from p2p.proto.proto import Message, MethodTypes, Headers, ServerResponse, ResponseStatus
+from p2p.proto.proto import Message, MethodTypes, Headers, ServerResponse, ResponseStatus, ForbiddenError
+from p2p.utils.app_constants import RS_PORT
 from threading import Lock
 
 
@@ -16,23 +17,52 @@ class P2PServer(Server):
     def __init__(self, host, port):
         super().__init__(host, port)
         self.mutex = Lock()
-        self.cookie = None
+        self.cookie = -1
 
     def _on_start(self):
         """ register this peer """
-        self.conn.connect(('127.0.0.1', RegistrationServer.PORT))
+        conn = socket.socket()
+        conn.connect(('127.0.0.1', RS_PORT))
+
         msg = Message()
         msg.method = MethodTypes.Register.name
         msg.headers = {}
         msg.version = Message.VERSION
         msg.payload = "{}\n{}".format(self.host, self.port)
-        self.conn.send(msg.to_bytes())
-        response = ServerResponse().from_str(self.conn.recv(1024).decode("utf-8"))
-        print(response)
+
+        try:
+            conn.send(msg.to_bytes())
+            response = ServerResponse().from_str(conn.recv(1024).decode("utf-8"))
+            self.cookie = response.headers[Headers.Cookie.name]
+            self.logger.info("Peer registered")
+        except Exception as e:
+            self.logger.error("Error while registering Peer: {}".format(e))
+        finally:
+            conn.close()
 
     def _reconcile(self):
         """ reconcile state of the server periodically """
-        pass
+        conn = socket.socket()
+        conn.connect(('127.0.0.1', RS_PORT))
+
+        msg = Message()
+        msg.method = MethodTypes.KeepAlive.name
+        msg.headers = {Headers.Cookie.name: self.cookie}
+        msg.version = Message.VERSION
+        msg.payload = "{}\n{}".format(self.host, self.port)
+
+        try:
+            conn.send(msg.to_bytes())
+            response = ServerResponse().from_str(conn.recv(1024).decode("utf-8"))
+            if int(response.status) == 403:
+                raise ForbiddenError(response.payload)
+            self.logger.info("TTL extended")
+        except ForbiddenError as e:
+            self.logger.error(e)
+        except Exception as e:
+            self.logger.error("Error while extending TTL: {}".format(e))
+        finally:
+            conn.close()
 
     def _new_message_callback(self, conn, msg):
         """ processes a message """
@@ -90,7 +120,7 @@ class ClientEntry(object):
 
 
 if __name__ == '__main__':
-    peer = P2PServer("127.0.0.1", 9900)
+    peer = P2PServer("127.0.0.1", random.randint(9900, 9990))
     try:
         peer.start()
     except Exception as err:

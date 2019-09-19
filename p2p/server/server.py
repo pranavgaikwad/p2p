@@ -1,4 +1,3 @@
-import sys
 import time
 import queue
 import socket
@@ -9,7 +8,6 @@ from p2p.utils.logger import logger
 
 class Server(object):
     """ multi-client server """
-    PORT = 9999
 
     # reconcile interval
     INTERVAL = 5
@@ -41,13 +39,12 @@ class Server(object):
 
     def start(self, timeout=inf):
         """ starts the server """
+        self._on_start()
+
         self.conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.conn.setblocking(0)
-        server_addr = (self.host, self.port)
-        self.conn.bind(server_addr)
+        self.conn.bind((self.host, self.port))
         self.conn.listen(5)
-
-        self._on_start()
 
         inputs = [self.conn]
         outputs = []
@@ -68,8 +65,8 @@ class Server(object):
                 else:
                     data = s.recv(1024)
                     if data:
-                        self.logger.info("Received message '%s' from %s" % (
-                        str(data), str(s.getpeername()[0]) + ":" + str(s.getpeername()[1])))
+                        self.logger.info(
+                            "Received message {} from {}:{}".format(data, s.getpeername()[0], s.getpeername()[1]))
                         if s not in outputs:
                             outputs.append(s)
                         self._new_message_callback(s, data)

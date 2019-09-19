@@ -5,6 +5,7 @@ import unittest
 import threading
 from p2p.server.rs import RegistrationServer
 from p2p.proto.proto import Message, MethodTypes, Headers, ServerResponse, ResponseStatus
+from p2p.utils.app_constants import RS_PORT
 
 random.seed(0)
 
@@ -23,7 +24,7 @@ class RegistrationServerTest(unittest.TestCase):
     def _socket_connect_test(self):
         """ connects to a server socket """
         client = socket.socket()
-        client.connect(('127.0.0.1', RegistrationServer.PORT))
+        client.connect(('127.0.0.1', RS_PORT))
         time.sleep(4)
         msg = Message()
         msg.method = MethodTypes.Register.name
@@ -46,7 +47,7 @@ class RegistrationServerTest(unittest.TestCase):
     def _socket_error_test(self):
         """ connects to socket and fails the requests """
         client = socket.socket()
-        client.connect(('127.0.0.1', RegistrationServer.PORT))
+        client.connect(('127.0.0.1', RS_PORT))
         time.sleep(2)
         msg = Message()
         msg.method = "Unknown"
@@ -61,7 +62,7 @@ class RegistrationServerTest(unittest.TestCase):
     def _socket_cookie_test(self):
         """ connects to socket and fails the requests """
         client = socket.socket()
-        client.connect(('127.0.0.1', RegistrationServer.PORT))
+        client.connect(('127.0.0.1', RS_PORT))
         time.sleep(3)
         msg = Message()
         msg.method = MethodTypes.Register.name
@@ -81,7 +82,7 @@ class RegistrationServerTest(unittest.TestCase):
         threads = []
         self.buffer = []
         self.fail_buffer = []
-        rs = RegistrationServer('127.0.0.1', RegistrationServer.PORT)
+        rs = RegistrationServer('127.0.0.1', RS_PORT)
         server_thread = threading.Thread(target=rs.start, kwargs=dict(timeout=10, ))
         server_thread.start()
         time.sleep(5)
