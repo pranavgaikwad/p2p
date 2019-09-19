@@ -1,13 +1,13 @@
-import sys
-import queue
-import socket
-import select
+import random
 import datetime
 from threading import Lock
 from p2p.server.server import Server
 from p2p.client.client import ClientEntry as Client
 from p2p.proto.proto import Message, ServerResponse as Response
 from p2p.proto.proto import ResponseStatus as Status, MethodTypes
+from p2p.proto.proto import Headers, ForbiddenError
+
+random.seed(0)
 
 
 class RegistrationServer(Server):
@@ -34,8 +34,8 @@ class RegistrationServer(Server):
         self.mutex.acquire()
         try:
             p2port = msg.payload.split('\n')[1]
-            client = Client(host=host, port=port, p2port=p2port)
-            self.clients[client.id()] = client
+            client = Client(host=host, port=port, p2port=p2port, cookie=random.randint(1000, 9999))
+            self.clients[Client.id(host, p2port)] = client
             self.logger.info("Registered new client {}".format(client))
             response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
@@ -46,6 +46,7 @@ class RegistrationServer(Server):
             response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
+        response.headers[Headers.Cookie.name] = client.cookie
         return response
 
     def _handle_leave(self, conn, msg):
@@ -55,16 +56,21 @@ class RegistrationServer(Server):
         self.mutex.acquire()
         try:
             p2port = msg.payload.split('\n')[1]
-            client = Client(host=host, port=port, p2port=p2port)
-            self.clients[client.id()].ttl = 0
-            self.clients[client.id()].flag = Client.FLAG_INACTIVE
+            client = Client.id(host, p2port)
+            if not self._validate_cookie(client, msg):
+                raise ForbiddenError
+            self.clients[client].ttl = 0
+            self.clients[client].flag = Client.FLAG_INACTIVE
             self.logger.info("Removed client {}".format(client))
             response = Response("Success", Status.Success.value)
         except (KeyError, ValueError):
-            self.logger.error("Failed removing client {}".format(client))
+            self.logger.error("Failed removing client {}".format(self.clients[client]))
             response = Response("Error", Status.BadMessage.value)
+        except ForbiddenError:
+            self.logger.error("Forbidden client: {}".format(self.clients[client]))
+            response = Response("Forbidden", Status.Forbidden.value)
         except Exception as e:
-            self.logger.error("Failed removing client {}: {}".format(client, e))
+            self.logger.error("Failed removing client {}: {}".format(self.clients[client], e))
             response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
@@ -72,9 +78,17 @@ class RegistrationServer(Server):
 
     def _handle_pquery(self, conn, msg):
         """ handles query request """
+        host = conn.getpeername()[0]
         response = Response("Success", Status.Success.value)
         try:
+            p2port = msg.payload.split('\n')[1]
+            client = Client.id(host, p2port)
+            if not self._validate_cookie(client, msg):
+                raise ForbiddenError
             response.payload = ','.join(self.clients.keys())
+        except ForbiddenError:
+            self.logger.error("Forbidden client: {}".format(self.clients[client]))
+            response = Response("Forbidden", Status.Forbidden.value)
         except Exception as e:
             self.logger.error("Failed querying list of clients : %s" % str(e))
         return response
@@ -82,20 +96,24 @@ class RegistrationServer(Server):
     def _handle_keep_alive(self, conn, msg):
         """ handles keep-alive request """
         host = conn.getpeername()[0]
-        port = conn.getpeername()[1]
         self.mutex.acquire()
         try:
             p2port = msg.payload.split('\n')[1]
-            client = Client(host=host, port=port, p2port=p2port)
-            self.clients[client.id()].ttl = Client.TTL
-            self.clients[client.id()].flag = Client.FLAG_INACTIVE
-            self.logger.info("Extended TTL for client {}".format(client))
+            client = Client.id(host, p2port)
+            if not self._validate_cookie(client, msg):
+                raise ForbiddenError
+            self.clients[client].ttl = Client.TTL
+            self.clients[client].flag = Client.FLAG_INACTIVE
+            self.logger.info("Extended TTL for client {}".format(self.clients[client]))
             response = Response("Success", Status.Success.value)
-        except (KeyError, ValueError):
-            self.logger.error("Failed extending TTL for client {}".format(client))
+        except (KeyError, ValueError) as e:
+            self.logger.error("Failed extending TTL for client {}: {}".format(self.clients[client], e))
             response = Response("Error", Status.BadMessage.value)
+        except ForbiddenError:
+            self.logger.error("Forbidden client: {}".format(self.clients[client]))
+            response = Response("Forbidden", Status.Forbidden.value)
         except Exception as e:
-            self.logger.error("Failed extending TTL for client {}: {}".format(client, e))
+            self.logger.error("Failed extending TTL for client {}: {}".format(self.clients[client], e))
             response = Response("Internal Error", Status.InternalError.value)
         finally:
             self.mutex.release()
@@ -135,6 +153,13 @@ class RegistrationServer(Server):
     def _new_connection_callback(self, conn):
         """ process new connection """
         pass
+
+    def _validate_cookie(self, client, msg):
+        try:
+            cookie = msg.headers[Headers.Cookie.name]
+        except KeyError:
+            raise ForbiddenError
+        return self.clients[client].cookie == int(cookie)
 
 
 if __name__ == "__main__":

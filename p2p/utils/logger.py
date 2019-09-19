@@ -2,10 +2,10 @@ import logging
 
 
 def logger():
-    logger = logging.getLogger(__name__)
-    consoleHandler = logging.StreamHandler()
-    logger.setLevel(logging.DEBUG)
+    _logger = logging.getLogger(__name__)
+    console_handler = logging.StreamHandler()
+    _logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(levelname)s %(asctime)-15s %(message)s', '%Y-%m-%d %H:%M:%S')
-    consoleHandler.setFormatter(formatter)
-    logger.addHandler(consoleHandler)
-    return logger
+    console_handler.setFormatter(formatter)
+    _logger.addHandler(console_handler)
+    return _logger
