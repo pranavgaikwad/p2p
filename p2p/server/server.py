@@ -31,6 +31,10 @@ class Server(object):
         """ callback for new message. override """
         pass
 
+    def _on_start(self):
+        """ startup operations. override """
+        pass
+
     def _reconcile(self):
         """ reconcile loop """
         pass
@@ -42,6 +46,9 @@ class Server(object):
         server_addr = (self.host, self.port)
         self.conn.bind(server_addr)
         self.conn.listen(5)
+
+        self._on_start()
+
         inputs = [self.conn]
         outputs = []
         timeout = time.time() + timeout

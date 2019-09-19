@@ -89,7 +89,7 @@ class Message(object):
 class ServerResponse(Message):
     """ a special message sent by server as a response """
 
-    def __init__(self, response, status):
+    def __init__(self, response=None, status=None):
         super(ServerResponse, self).__init__()
         self.method = MethodTypes.Response.name
         self.status = status

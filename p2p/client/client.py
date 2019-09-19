@@ -1,4 +1,42 @@
+import sys
 from p2p.utils.logger import logger
+from p2p.server.server import Server
+from p2p.server.rs import RegistrationServer
+from p2p.proto.proto import Message, MethodTypes, Headers, ServerResponse, ResponseStatus
+from threading import Lock
+
+
+class Peer:
+    def __init__(self):
+        pass
+
+
+class P2PServer(Server):
+
+    def __init__(self, host, port):
+        super().__init__(host, port)
+        self.mutex = Lock()
+        self.cookie = None
+
+    def _on_start(self):
+        """ register this peer """
+        self.conn.connect(('127.0.0.1', RegistrationServer.PORT))
+        msg = Message()
+        msg.method = MethodTypes.Register.name
+        msg.headers = {}
+        msg.version = Message.VERSION
+        msg.payload = "{}\n{}".format(self.host, self.port)
+        self.conn.send(msg.to_bytes())
+        response = ServerResponse().from_str(self.conn.recv(1024).decode("utf-8"))
+        print(response)
+
+    def _reconcile(self):
+        """ reconcile state of the server periodically """
+        pass
+
+    def _new_message_callback(self, conn, msg):
+        """ processes a message """
+        pass
 
 
 class P2PClient(object):
@@ -49,3 +87,12 @@ class ClientEntry(object):
     @staticmethod
     def id(host, p2port):
         return "{}:{}".format(host, p2port)
+
+
+if __name__ == '__main__':
+    peer = P2PServer("127.0.0.1", 9900)
+    try:
+        peer.start()
+    except Exception as err:
+        print("Stopping...{}".format(err))
+        peer.stop()
