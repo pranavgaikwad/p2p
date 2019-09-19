@@ -1,4 +1,3 @@
-import struct
 import logging
 from enum import Enum
 
@@ -22,12 +21,14 @@ class Headers(Enum):
     """ headers """
     ContentLength = 1
     ContentType = 2
+    Cookie = 3
 
 
 class ResponseStatus(Enum):
     """ server response status """
     Success = 200
     BadMessage = 400
+    Forbidden = 403
     MethodNotAllowed = 405
     InternalError = 500
     Unknown = 999
@@ -125,3 +126,7 @@ class ServerResponse(Message):
     def get_peer_list(self):
         """ helper to parse list of peers from response """
         pass
+
+
+class ForbiddenError(Exception):
+    pass

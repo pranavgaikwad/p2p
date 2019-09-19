@@ -27,11 +27,11 @@ class ClientEntry(object):
 
     TTL = 7200
 
-    def __init__(self, host, port, p2port=0):
+    def __init__(self, host, port, p2port=0, cookie=None):
         self.host = host
         self.port = port
         self.p2port = p2port  # port on which P2P server is running
-        self.cookie = "%s: %s" % (host, port)
+        self.cookie = cookie
         self.flag = ClientEntry.FLAG_ACTIVE
         self.ttl = ClientEntry.TTL
         self.activity = 0
@@ -46,5 +46,6 @@ class ClientEntry(object):
     def __eq__(self, c):
         return self.host == c.host and self.port == c.port
 
-    def id(self):
-        return "{}:{}".format(self.host, self.p2port)
+    @staticmethod
+    def id(host, p2port):
+        return "{}:{}".format(host, p2port)
