@@ -6,7 +6,7 @@ from p2p.client.client import ClientEntry as Client
 from p2p.proto.proto import Message, ServerResponse as Response
 from p2p.proto.proto import ResponseStatus as Status, MethodTypes
 from p2p.proto.proto import Headers, ForbiddenError
-from p2p.utils.app_constants import RS_PORT
+from p2p.utils.app_constants import RS_HOST, RS_PORT
 
 random.seed(0)
 
@@ -20,22 +20,24 @@ class RegistrationServer(Server):
 
     def _reconcile(self):
         """ reconcile state of the server periodically """
+        active = 0
         for _, client in self.clients.items():
             if client.flag is Client.FLAG_ACTIVE:
                 client.ttl = client.ttl - Server.INTERVAL
                 if client.ttl <= 0:
                     client.flag = Client.FLAG_INACTIVE
                     self.logger.info("Setting client {} inactive".format(client))
+                else:
+                    active += 1
+        self.logger.info("Reconcile status: {} clients active".format(active))
 
     def _handle_register(self, conn, msg):
         """ handles register request """
-        host = conn.getpeername()[0]
-        port = conn.getpeername()[1]
         client = None
         self.mutex.acquire()
         try:
-            p2port = msg.payload.split(Message.SR_FIELDS)[1]
-            client = Client(host=host, port=port, p2port=p2port, cookie=random.randint(1000, 9999))
+            host, p2port = msg.payload.split(Message.SR_FIELDS)
+            client = Client(host=host, p2port=p2port, cookie=random.randint(1000, 9999))
             self.clients[Client.id(host, p2port)] = client
             self.logger.info("Registered new client {}".format(client))
             response = Response("Success", Status.Success.value)
@@ -52,11 +54,10 @@ class RegistrationServer(Server):
 
     def _handle_leave(self, conn, msg):
         """ handles leave request """
-        host = conn.getpeername()[0]
         client = None
         self.mutex.acquire()
         try:
-            p2port = msg.payload.split(Message.SR_FIELDS)[1]
+            host, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
@@ -79,40 +80,41 @@ class RegistrationServer(Server):
 
     def _handle_pquery(self, conn, msg):
         """ handles query request """
-        host = conn.getpeername()[0]
         client = None
         response = Response("Success", Status.Success.value)
         try:
-            p2port = msg.payload.split(Message.SR_FIELDS)[1]
+            host, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
 
-            active_peers = []
-            for _id, _client in self.clients.items():
-                if _client.flag is Client.FLAG_ACTIVE:
-                    active_peers.append(_id)
-            response.payload = ','.join(active_peers)
+            active_peers = set()
+            for _id, peer in self.clients.items():
+                if peer.flag is Client.FLAG_ACTIVE:
+                    active_peers.add(_id)
+            if client in active_peers:
+                active_peers.remove(client)  # remove the requesting client from the set of active peers
+            self.logger.info("{} active Peers found".format(len(active_peers)))
+            response.payload = Message.SR_FIELDS.join(active_peers)
         except ForbiddenError:
             self.logger.error("Forbidden client: {}".format(self.clients[client]))
             response = Response("Forbidden", Status.Forbidden.value)
         except Exception as e:
-            self.logger.error("Failed querying list of clients : %s" % str(e))
+            self.logger.error("Failed querying list of clients: %s" % str(e))
             response = Response(Status.InternalError.name, Status.InternalError.value)
         return response
 
     def _handle_keep_alive(self, conn, msg):
         """ handles keep-alive request """
-        host = conn.getpeername()[0]
         client = None
         self.mutex.acquire()
         try:
-            p2port = msg.payload.split(Message.SR_FIELDS)[1]
+            host, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
             self.clients[client].ttl = Client.TTL
-            self.clients[client].flag = Client.FLAG_INACTIVE
+            self.clients[client].flag = Client.FLAG_ACTIVE
             self.logger.info("Extended TTL for client {}".format(self.clients[client]))
             response = Response("Success: TTL Extended", Status.Success.value)
         except (KeyError, ValueError) as e:
@@ -174,7 +176,7 @@ class RegistrationServer(Server):
 
 
 if __name__ == "__main__":
-    rs = RegistrationServer("127.0.0.1", RS_PORT)
+    rs = RegistrationServer(RS_HOST, RS_PORT)
     try:
         rs.start()
     except Exception as err:

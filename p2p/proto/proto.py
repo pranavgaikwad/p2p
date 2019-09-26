@@ -134,3 +134,7 @@ class ServerResponse(Message):
 
 class ForbiddenError(Exception):
     pass
+
+
+class CriticalError(Exception):
+    pass
