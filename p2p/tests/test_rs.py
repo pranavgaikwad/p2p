@@ -26,21 +26,26 @@ class RegistrationServerTest(unittest.TestCase):
         client = socket.socket()
         client.connect(('127.0.0.1', RS_PORT))
         time.sleep(4)
+
         msg = Message()
         msg.method = MethodTypes.Register.name
         msg.headers = {}
         msg.version = Message.VERSION
-        msg.payload = "nick-name\n{}".format(random.randint(7000, 8000))
+        msg.payload = "nick-name{}{}".format(Message.SR_FIELDS, random.randint(7000, 8000))
+
         client.send(msg.to_bytes())
-        response = ServerResponse("", "").from_str(client.recv(1024).decode("utf-8"))
+        response = ServerResponse("", "200").from_str(client.recv(1024).decode("utf-8"))
         self.assertTrue(Headers.Cookie.name in response.headers)
+
         msg.headers[Headers.Cookie.name] = response.headers[Headers.Cookie.name]
         msg.method = MethodTypes.KeepAlive.name
         client.send(msg.to_bytes())
         client.recv(1024)
+
         msg.method = MethodTypes.Leave.name
         client.send(msg.to_bytes())
         data = client.recv(1024)
+
         self.buffer.append(data.decode('utf-8'))
         client.close()
 
@@ -49,13 +54,16 @@ class RegistrationServerTest(unittest.TestCase):
         client = socket.socket()
         client.connect(('127.0.0.1', RS_PORT))
         time.sleep(2)
+
         msg = Message()
         msg.method = "Unknown"
         msg.headers = {}
         msg.version = Message.VERSION
         msg.payload = "Invalid message"
+
         client.send(msg.to_bytes())
         data = client.recv(1024)
+
         self.fail_buffer.append(data.decode('utf-8'))
         client.close()
 
@@ -64,16 +72,20 @@ class RegistrationServerTest(unittest.TestCase):
         client = socket.socket()
         client.connect(('127.0.0.1', RS_PORT))
         time.sleep(3)
+
         msg = Message()
         msg.method = MethodTypes.Register.name
         msg.headers = {}
         msg.version = Message.VERSION
-        msg.payload = "nick-name\n{}".format(random.randint(7000, 8000))
+        msg.payload = "nick-name{}{}".format(Message.SR_FIELDS, random.randint(7000, 8000))
+
         client.send(msg.to_bytes())
         client.recv(1024)
+
         msg.method = MethodTypes.KeepAlive.name
         client.send(msg.to_bytes())
         response = ServerResponse("", "").from_str(client.recv(1024).decode("utf-8"))
+
         self.assertEqual(int(response.status), ResponseStatus.Forbidden.value)
         client.close()
 
@@ -97,10 +109,10 @@ class RegistrationServerTest(unittest.TestCase):
 
         server_thread.join()
 
-        expected = 'Response 200 P2Pv1\n\nSuccess'
+        expected = "Response<fs>P2Pv1<cs>Success<cs>200"
         self.assertEqual([expected, expected, expected], self.buffer)
 
-        expected = 'Response 405 P2Pv1\n\nMethod not allowed'
+        expected = "Response<fs>P2Pv1<cs>Method not allowed<cs>405"
         self.assertEqual([expected, expected, expected], self.fail_buffer)
 
     def test_stop(self):

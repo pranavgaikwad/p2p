@@ -31,9 +31,10 @@ class RegistrationServer(Server):
         """ handles register request """
         host = conn.getpeername()[0]
         port = conn.getpeername()[1]
+        client = None
         self.mutex.acquire()
         try:
-            p2port = msg.payload.split('\n')[1]
+            p2port = msg.payload.split(Message.SR_FIELDS)[1]
             client = Client(host=host, port=port, p2port=p2port, cookie=random.randint(1000, 9999))
             self.clients[Client.id(host, p2port)] = client
             self.logger.info("Registered new client {}".format(client))
@@ -52,9 +53,10 @@ class RegistrationServer(Server):
     def _handle_leave(self, conn, msg):
         """ handles leave request """
         host = conn.getpeername()[0]
+        client = None
         self.mutex.acquire()
         try:
-            p2port = msg.payload.split('\n')[1]
+            p2port = msg.payload.split(Message.SR_FIELDS)[1]
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
@@ -78,9 +80,10 @@ class RegistrationServer(Server):
     def _handle_pquery(self, conn, msg):
         """ handles query request """
         host = conn.getpeername()[0]
+        client = None
         response = Response("Success", Status.Success.value)
         try:
-            p2port = msg.payload.split('\n')[1]
+            p2port = msg.payload.split(Message.SR_FIELDS)[1]
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
@@ -95,14 +98,16 @@ class RegistrationServer(Server):
             response = Response("Forbidden", Status.Forbidden.value)
         except Exception as e:
             self.logger.error("Failed querying list of clients : %s" % str(e))
+            response = Response(Status.InternalError.name, Status.InternalError.value)
         return response
 
     def _handle_keep_alive(self, conn, msg):
         """ handles keep-alive request """
         host = conn.getpeername()[0]
+        client = None
         self.mutex.acquire()
         try:
-            p2port = msg.payload.split('\n')[1]
+            p2port = msg.payload.split(Message.SR_FIELDS)[1]
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError

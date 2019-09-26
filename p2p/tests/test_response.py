@@ -10,29 +10,29 @@ class ServerResponseTest(unittest.TestCase):
 
     def test_to_dict(self):
         """ message to dict """
-        msg_str = "Response 200 P2Pv1\nContentLength: 7\n\nSuccess"
+        msg_str = "Response<fs>P2Pv1<hs>ContentLength: 7<cs>Success<cs>200"
         e = {
             "method": "Response",
             "version": "P2Pv1",
-            "status": "200",
             "headers": {
-                "ContentLength": "7",
+                "ContentLength": "7"
             },
-            "payload": "Success"
+            "payload": "Success",
+            "status": "200"
         }
-        msg = Message("Success", Status.Success.value)
+        msg = Message()
         msg.from_str(msg_str)
         self.assertEqual(msg.to_dict(), e)
 
-        msg_str = "Response 400 P2Pv1\nContentLength: 6\n\nFailed"
+        msg_str = "Response<fs>P2Pv1<hs>ContentLength: 6<cs>Failed<cs>400"
         e = {
             "method": "Response",
             "version": "P2Pv1",
-            "status": "400",
             "headers": {
                 "ContentLength": "6",
             },
-            "payload": "Failed"
+            "payload": "Failed",
+            "status": "400"
         }
         msg = Message("Failed", Status.BadMessage.value)
         msg.from_str(msg_str)
@@ -45,8 +45,12 @@ class ServerResponseTest(unittest.TestCase):
 
     def test_str(self):
         """ string representation of message """
-        msg = Message("Success", Status.Success.value)
-        self.assertEqual(str(msg), "Response 200 P2Pv1\n\nSuccess")
+        msg = Message()
+        msg.method = MethodTypes.Response.name
+        msg.headers = {'hf1': 'hv1', 'hf2': 'hv2'}
+        msg.payload = "Success"
+        msg.status = "200"
+        self.assertEqual(str(msg), "Response<fs>P2Pv1<hs>hf1: hv1<fs>hf2: hv2<cs>Success<cs>200")
         pass
 
 

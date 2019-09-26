@@ -37,11 +37,21 @@ class ResponseStatus(Enum):
 # defines protocols required by P2P-DI System
 class Message(object):
     """ message """
-    VERSION = "P2Pv1"
+
+    # component identifiers
+    CP_META = 0
+    CP_PAYLOAD = 1
+
+    # meta identifiers
+    MT_METHOD_VERSION = 0
+    MT_HEADERS = 1
 
     # separators
-    SR_HEADERS = "\n"
-    SR_FIELDS = " "
+    SR_COMPONENT = "<cs>"
+    SR_FIELDS = "<fs>"
+    SR_HEADERS = "<hs>"
+
+    VERSION = "P2Pv1"
 
     def __init__(self):
         self.method = ""
@@ -56,28 +66,23 @@ class Message(object):
     def from_str(self, msg):
         """ loads a message from string """
         try:
-            meta = msg.split('\n\n')[0]
-            payload = msg.split('\n\n')[1]
-            meta_lines = meta.split('\n')
-            self.method = meta_lines[0].split(' ')[0]
-            self.version = meta_lines[0].split(' ')[1]
-            headers = {}
-            for line in meta_lines[1:]:
-                header = line.split(': ')[0]
-                value = line.split(': ')[1]
-                headers[header] = value
-            self.headers = headers
-            self.payload = payload
+            meta, self.payload = self._get_components(msg)
+            meta = meta.split(self.SR_HEADERS)
+            self.method, self.version = meta[self.MT_METHOD_VERSION].split(self.SR_FIELDS)
+            if len(meta) > 1:
+                self.headers.update(self._get_headers(meta[self.MT_HEADERS]))
             return self
         except Exception as e:
             raise ValueError("Invalid message %s" % str(e))
 
     def __str__(self):
-        headers_str = ""
-        for header, value in self.headers.items():
-            headers_str = "%s%s: %s\n" % (headers_str, header, value)
-        return "%s%s%s%s%s%s%s" % (self.method, self.SR_FIELDS, self.version,
-                                   self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
+        method_version = self.SR_FIELDS.join([self.method, self.version])
+        if self.headers:
+            header_str = self.SR_FIELDS.join(["{}: {}".format(k, v) for k, v in self.headers.items()])
+            meta = self.SR_HEADERS.join([method_version, header_str])
+        else:
+            meta = method_version
+        return self.SR_COMPONENT.join([meta, self.payload])
 
     def to_dict(self):
         """ dict representation of message """
@@ -85,43 +90,42 @@ class Message(object):
         del d['logger']
         return d
 
+    def _get_components(self, msg):
+        meta, payload = msg.split(self.SR_COMPONENT)
+        return meta, payload
+
+    def _get_headers(self, header_str):
+        return dict([h.split(': ') for h in [_ for _ in header_str.split(self.SR_FIELDS)]])
+
 
 class ServerResponse(Message):
     """ a special message sent by server as a response """
 
-    def __init__(self, response=None, status=None):
+    # component identifiers
+    CP_STATUS = 2
+
+    def __init__(self, response=None, status=ResponseStatus.Success.value):
         super(ServerResponse, self).__init__()
         self.method = MethodTypes.Response.name
-        self.status = status
-        self.payload = response
         self.version = Message.VERSION
+        self.payload = response
+        self.status = status
 
     def __str__(self):
-        headers_str = ""
-        for header, value in self.headers.items():
-            headers_str = "%s%s: %s\n" % (headers_str, header, value)
-        return "%s%s%s%s%s%s%s%s%s" % (self.method, self.SR_FIELDS, self.status, self.SR_FIELDS, self.version,
-                                       self.SR_HEADERS, headers_str, self.SR_HEADERS, self.payload)
+        return self.SR_COMPONENT.join([super().__str__(), str(self.status)])
 
     def from_str(self, msg):
         """ loads a message from string """
         try:
-            meta = msg.split('\n\n')[0]
-            payload = msg.split('\n\n')[1]
-            meta_lines = meta.split('\n')
-            self.method = meta_lines[0].split(' ')[0]
-            self.status = str(meta_lines[0].split(' ')[1])
-            self.version = meta_lines[0].split(' ')[2]
-            headers = {}
-            for line in meta_lines[1:]:
-                header = line.split(': ')[0]
-                value = line.split(': ')[1]
-                headers[header] = value
-            self.headers = headers
-            self.payload = payload
+            super().from_str(msg)
+            self.status = msg.split(self.SR_COMPONENT)[self.CP_STATUS]
             return self
         except:
             raise ValueError("Invalid message")
+
+    def _get_components(self, msg):
+        meta, payload, _ = msg.split(self.SR_COMPONENT)
+        return meta, payload
 
     def get_peer_list(self):
         """ helper to parse list of peers from response """
