@@ -1,5 +1,5 @@
 from socket import socket, AF_INET, SOCK_STREAM, error
-import random, time
+import random
 from ast import literal_eval
 from threading import Thread
 from glob import glob
@@ -45,7 +45,13 @@ class Peer:
         done = False
         while not done:
             try:
+                remaining = self.goal_state - self.rfc_index
+                if not remaining:
+                    self.logger.info("[CLIENT] Client task completed")
+                    break
+
                 active_peers = self._get_active_peers()
+
                 for peer in active_peers:
                     remaining = self.goal_state - self.rfc_index
                     if remaining:
