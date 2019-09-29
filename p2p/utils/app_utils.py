@@ -4,6 +4,7 @@ import logging
 import socket
 import errno
 import time
+from functools import wraps
 
 
 def logger():
@@ -15,6 +16,25 @@ def logger():
         console_handler.setFormatter(formatter)
         _logger.addHandler(console_handler)
     return _logger
+
+
+def retry(exceptions, tries=3, delay=2, _logger=logger()):
+    """ retry calling the decorated function """
+    def deco_retry(f):
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except exceptions as e:
+                    msg = '{}, Retrying in {} seconds...'.format(e, mdelay)
+                    _logger.warning(msg)
+                    time.sleep(mdelay)
+                    mtries -= 1
+            return f(*args, **kwargs)
+        return f_retry  # true decorator
+    return deco_retry
 
 
 def send(sock, msg):

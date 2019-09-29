@@ -138,3 +138,7 @@ class ForbiddenError(Exception):
 
 class CriticalError(Exception):
     pass
+
+
+class NotFoundError(Exception):
+    pass

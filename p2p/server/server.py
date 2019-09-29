@@ -104,6 +104,7 @@ class Server(object):
                     continue
                 raise e
         else:
+            self.logger.info("Server running on {}:{} stopped".format(self.host, self.port))
             self.stop()
 
     def stop(self):
@@ -111,6 +112,5 @@ class Server(object):
         self.stopped = True
         try:
             self.conn.close()
-            self.logger.info("Server running on {}:{} stopped".format(self.host, self.port))
         except OSError as e:
             self.logger.error('Error shutting down socket... {}'.format(e))
