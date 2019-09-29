@@ -2,8 +2,9 @@ import time
 import queue
 import socket
 import select
+import errno
 from math import inf
-from p2p.utils.logger import logger
+from p2p.utils.app_utils import logger, send, recv
 
 
 class Server(object):
@@ -51,48 +52,57 @@ class Server(object):
         timeout = time.time() + timeout
         self.logger.info("Started server on (%s, %s)" % (self.host, self.port))
         while not self.stopped and inputs and time.time() < timeout:
-            # listen for connections
-            readable, writeable, exceptional = select.select(inputs, outputs, inputs, Server.INTERVAL)
-            # reconcile state
-            self._reconcile()
-            for s in readable:
-                if s is self.conn:
-                    conn, client = s.accept()
-                    self.logger.info("Accepted connection from %s" % str(client))
-                    inputs.append(conn)
-                    self.messages[conn] = queue.Queue()
-                    self._new_connection_callback(conn)
-                else:
-                    data = s.recv(1024)
-                    if data:
-                        self.logger.info(
-                            "Received message {} from {}:{}".format(data, s.getpeername()[0], s.getpeername()[1]))
-                        if s not in outputs:
-                            outputs.append(s)
-                        self._new_message_callback(s, data)
+            try:
+                # listen for connections
+                readable, writeable, exceptional = select.select(inputs, outputs, inputs, Server.INTERVAL)
+
+                # reconcile state
+                self._reconcile()
+
+                for s in readable:
+                    if s is self.conn:
+                        conn, client = s.accept()
+                        self.logger.info("Accepted connection from %s" % str(client))
+                        inputs.append(conn)
+                        self.messages[conn] = queue.Queue()
+                        self._new_connection_callback(conn)
                     else:
-                        if s in outputs:
-                            outputs.remove(s)
-                        inputs.remove(s)
-                        s.close()
-                        del self.messages[s]
+                        data = recv(s)
+                        if data:
+                            self.logger.info(
+                                "Received message {} from {}:{}".format(data, s.getpeername()[0], s.getpeername()[1]))
+                            if s not in outputs:
+                                outputs.append(s)
+                            self._new_message_callback(s, data)
+                        else:
+                            if s in outputs:
+                                outputs.remove(s)
+                            inputs.remove(s)
+                            s.close()
+                            del self.messages[s]
 
-            for s in writeable:
-                try:
-                    next_msg = self.messages[s].get_nowait()
-                except queue.Empty:
-                    outputs.remove(s)
-                except KeyError:
-                    pass
-                else:
-                    s.send(next_msg)
+                for s in writeable:
+                    try:
+                        next_msg = self.messages[s].get_nowait()
+                    except queue.Empty:
+                        outputs.remove(s)
+                    except KeyError:
+                        pass
+                    else:
+                        send(s, next_msg)
 
-            for s in exceptional:
-                inputs.remove(s)
-                for s in outputs:
-                    outputs.remove(s)
-                s.close()
-                del self.messages[s]
+                for s in exceptional:
+                    inputs.remove(s)
+                    for s in outputs:
+                        outputs.remove(s)
+                    s.close()
+                    del self.messages[s]
+
+            except OSError as e:
+                if e.errno == errno.EBADF:
+                    self.stopped = True
+                    continue
+                raise e
         else:
             self.stop()
 
@@ -101,5 +111,6 @@ class Server(object):
         self.stopped = True
         try:
             self.conn.close()
+            self.logger.info("Server running on {}:{} stopped".format(self.host, self.port))
         except OSError as e:
             self.logger.error('Error shutting down socket... {}'.format(e))

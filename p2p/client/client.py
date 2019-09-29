@@ -1,10 +1,10 @@
-from socket import socket, AF_INET, SOCK_STREAM
-import random
+from socket import socket, AF_INET, SOCK_STREAM, error
+import random, time
 from ast import literal_eval
 from threading import Thread
 from glob import glob
 from datetime import datetime
-from p2p.utils.logger import logger
+from p2p.utils.app_utils import logger, send, recv
 from p2p.server.server import Server
 from p2p.proto.proto import ResponseStatus as Status
 from p2p.proto.proto import ServerResponse as Response
@@ -30,7 +30,8 @@ class Peer:
         for file in glob(RFC_PATH + "/*.txt"):
             idx = file.split('/')[-1][3:7]
             if idx in self.rfc_index:
-                self.rfc_data[idx] = open(file).read()
+                with open(file) as f:
+                    self.rfc_data[idx] = f.read()
         self.logger.info("Loaded {} RFCs".format(len(self.rfc_data)))
 
     def main(self, client_task=False):
@@ -59,6 +60,7 @@ class Peer:
                 except CriticalError:
                     self.logger.error("[CLIENT] Critical error encountered, stopping client task")
                     break
+            self.leave()
 
     def _fetch_interested_rfcs(self, peer, interested):
         if interested:
@@ -81,10 +83,12 @@ class Peer:
         with socket(AF_INET, SOCK_STREAM) as conn:
             try:
                 conn.connect(RS)
-                conn.send(msg.to_bytes())
-                response = Response().from_str(conn.recv(1024).decode("utf-8"))
+                send(conn, msg)
+                response = Response().from_bytes(recv(conn))
                 peers = response.payload.split(SEP)
                 self.logger.info("[CLIENT] {} active Peer(s) found".format(len(peers)))
+            except error as se:
+                self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
                 self.logger.error("[CLIENT] Error while retrieving active Peers: {}".format(e))
                 raise CriticalError
@@ -100,10 +104,12 @@ class Peer:
             try:
                 host, port = peer.split(':')
                 conn.connect((host, int(port)))
-                conn.send(msg.to_bytes())
-                response = Response().from_str(conn.recv(1024).decode("utf-8"))
+                send(conn, msg)
+                response = Response().from_bytes(recv(conn))
                 index = set(response.payload.split(SEP))
                 self.logger.info("[CLIENT] RFC Index retrieved from Peer {}".format(peer))
+            except error as se:
+                self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
                 self.logger.error("[CLIENT] Error while retrieving RFC Index from Peer {}: {}".format(peer, e))
         return index
@@ -119,13 +125,40 @@ class Peer:
             try:
                 host, port = peer.split(':')
                 conn.connect((host, int(port)))
-                conn.send(msg.to_bytes())
-                response = Response().from_str(conn.recv(1024).decode("utf-8"))
+                send(conn, msg)
+                response = Response().from_bytes(recv(conn))
                 new_rfcs = response.payload.split(SEP)
                 self.logger.info("[CLIENT] {} new RFCs fetched from Peer {}".format(len(new_rfcs), peer))
+            except error as se:
+                self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
                 self.logger.error("[CLIENT] Error while fetching new RFCs from Peer {}: {}".format(peer, e))
         return new_rfcs
+
+    def leave(self):
+        msg = Message()
+        msg.method = MethodTypes.Leave.name
+        msg.version = Message.VERSION
+        msg.payload = "{}{}{}".format(self.server.host, SEP, self.server.port)
+        msg.headers[Headers.Cookie.name] = self.server.cookie
+
+        status = None
+        with socket(AF_INET, SOCK_STREAM) as conn:
+            try:
+                conn.connect(RS)
+                send(conn, msg)
+                response = Response().from_bytes(recv(conn))
+                status = response.status
+                if int(status) == Status.Success.value:
+                    self.logger.info("Successfully left P2P-DI system")
+                    self.stop()
+                else:
+                    self.logger.error("Failed to leave P2P-DI system")
+            except error as se:
+                self.logger.error("Socket error: {}".format(se))
+            except Exception as e:
+                self.logger.error("Error while attempting to leave P2P-DI system: {}".format(e))
+        return status
 
     def stop(self):
         self.server.stop()
@@ -142,43 +175,45 @@ class P2PServer(Server):
         """ load RFCs in memory and register this peer """
         self.platform_peer.load_rfcs()
 
+        msg = Message()
+        msg.method = MethodTypes.Register.name
+        msg.headers = {}
+        msg.version = Message.VERSION
+        msg.payload = "{}{}{}".format(self.host, SEP, self.port)
+
         with socket(AF_INET, SOCK_STREAM) as conn:
-            conn.connect(RS)
-
-            msg = Message()
-            msg.method = MethodTypes.Register.name
-            msg.headers = {}
-            msg.version = Message.VERSION
-            msg.payload = "{}{}{}".format(self.host, SEP, self.port)
-
             try:
-                conn.send(msg.to_bytes())
-                response = Response().from_str(conn.recv(1024).decode("utf-8"))
+                conn.connect(RS)
+                send(conn, msg)
+                response = Response().from_bytes(recv(conn))
                 self.cookie = response.headers[Headers.Cookie.name]
                 self.platform_peer.registered = True
                 self.logger.info("Peer registered")
+            except error as se:
+                self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
                 self.logger.error("Error while registering Peer: {}".format(e))
 
     def _reconcile(self):
         """ reconcile state of the server periodically """
+        msg = Message()
+        msg.method = MethodTypes.KeepAlive.name
+        msg.headers = {Headers.Cookie.name: self.cookie}
+        msg.version = Message.VERSION
+        msg.payload = "{}{}{}".format(self.host, SEP, self.port)
+
         with socket(AF_INET, SOCK_STREAM) as conn:
-            conn.connect(RS)
-
-            msg = Message()
-            msg.method = MethodTypes.KeepAlive.name
-            msg.headers = {Headers.Cookie.name: self.cookie}
-            msg.version = Message.VERSION
-            msg.payload = "{}{}{}".format(self.host, SEP, self.port)
-
             try:
-                conn.send(msg.to_bytes())
-                response = Response().from_str(conn.recv(1024).decode("utf-8"))
+                conn.connect(RS)
+                send(conn, msg)
+                response = Response().from_bytes(recv(conn))
                 if int(response.status) == 403:
                     raise ForbiddenError(response.payload)
                 self.logger.info("TTL extended")
             except ForbiddenError as e:
                 self.logger.error(e)
+            except error as se:
+                self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
                 self.logger.error("Error while extending TTL: {}".format(e))
 
@@ -209,7 +244,7 @@ class P2PServer(Server):
         response = Response()
         p2pmsg = Message()
         try:
-            p2pmsg.from_str(msg.decode('utf-8'))
+            p2pmsg.from_bytes(msg)
 
             def handle(method):
                 return {
@@ -251,7 +286,7 @@ class ClientEntry(object):
         self.last_active = 0
 
     def __str__(self):
-        return "%s:%s" % (self.host, self.p2port)
+        return "{}:{}".format(self.host, self.p2port)
 
     def __repr__(self):
         return self.__str__()
@@ -267,9 +302,10 @@ class ClientEntry(object):
 if __name__ == '__main__':
     s1 = {'1001', '1002', '1003', '1004', '1005'}
     s2 = {'1006', '1007', '1008', '1009', '1010'}
-    p = Peer("127.0.0.1", random.randint(65400, 65500), s2)
+    s3 = s1.union(s2) - {'1001'}
+    p = Peer("127.0.0.1", random.randint(65400, 65500), s1)
     try:
-        p.main()
+        p.main(True)
     except Exception as err:
         print("Stopping... {}".format(err))
         p.stop()

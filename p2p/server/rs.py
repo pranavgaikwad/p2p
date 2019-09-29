@@ -136,7 +136,7 @@ class RegistrationServer(Server):
         start_time = datetime.datetime.now()
         response = Response("Success", Status.Success.value)
         try:
-            p2pmsg.from_str(msg.decode('utf-8'))
+            p2pmsg.from_bytes(msg)
 
             def handler(x):
                 return {
@@ -180,5 +180,5 @@ if __name__ == "__main__":
     try:
         rs.start()
     except Exception as err:
-        print("Stopping...%s" % str(err))
+        print("Stopping... %s" % str(err))
         rs.stop()

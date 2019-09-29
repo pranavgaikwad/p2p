@@ -63,6 +63,9 @@ class Message(object):
     def to_bytes(self):
         return bytes(self.__str__(), 'utf-8')
 
+    def from_bytes(self, msg):
+        return self.from_str(msg.decode('utf-8'))
+
     def from_str(self, msg):
         """ loads a message from string """
         try:
@@ -73,7 +76,8 @@ class Message(object):
                 self.headers.update(self._get_headers(meta[self.MT_HEADERS]))
             return self
         except Exception as e:
-            raise ValueError("Invalid message %s" % str(e))
+            self.logger.error("Error parsing message: {}".format(e))
+            raise ValueError("Invalid message {}".format(e))
 
     def __str__(self):
         method_version = self.SR_FIELDS.join([self.method, self.version])
@@ -126,10 +130,6 @@ class ServerResponse(Message):
     def _get_components(self, msg):
         meta, payload, _ = msg.split(self.SR_COMPONENT)
         return meta, payload
-
-    def get_peer_list(self):
-        """ helper to parse list of peers from response """
-        pass
 
 
 class ForbiddenError(Exception):
