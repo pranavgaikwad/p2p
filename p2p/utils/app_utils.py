@@ -45,6 +45,11 @@ def retry(exceptions, tries=3, delay=2, _logger=logger()):
     return deco_retry
 
 
+def get_true_hostname():
+    name = socket.gethostname()
+    return socket.gethostbyname(name)
+
+
 def send(sock, msg):
     if not isinstance(msg, bytes):
         msg = msg.to_bytes()

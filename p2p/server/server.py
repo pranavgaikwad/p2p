@@ -4,7 +4,7 @@ import socket
 import select
 import errno
 from math import inf
-from p2p.utils.app_utils import logger, send, recv
+from p2p.utils.app_utils import logger, send, recv, get_true_hostname
 
 
 class Server(object):
@@ -14,7 +14,8 @@ class Server(object):
     INTERVAL = 5
 
     def __init__(self, host, port):
-        self.host = host
+        # self.host = host
+        self.host = get_true_hostname()
         self.port = port
         self.clients = {}
         self.stopped = False

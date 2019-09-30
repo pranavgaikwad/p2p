@@ -1,9 +1,10 @@
 import os
+import socket
 from pathlib import Path
 
 # well known host and port for registration server
-RS_HOST = "192.168.10.54"
-# RS_HOST = "0.0.0.0"
+# RS_HOST = "192.168.10.54"
+RS_HOST = socket.gethostbyname(socket.gethostname())
 RS_PORT = 65423
 RS = (RS_HOST, RS_PORT)
 
