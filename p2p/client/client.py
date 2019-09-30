@@ -1,3 +1,4 @@
+import os
 import time
 import random
 from ast import literal_eval
@@ -40,10 +41,10 @@ class Peer:
 
     def load_rfcs(self):
         """ loads RFCs into memory """
-        for file in glob(RFC_PATH + "/*.txt"):
+        for file in os.listdir(RFC_PATH):
             idx = file.split('/')[-1][3:7]
             if idx in flatten(self.rfc_index.values()):
-                with open(file) as f:
+                with open("{}/{}".format(RFC_PATH, file)) as f:
                     self.rfc_data[idx] = f.read()
         self.logger.info("Loaded {} RFCs".format(len(self.rfc_data)))
 
