@@ -4,7 +4,6 @@ import random
 from ast import literal_eval
 from collections import defaultdict
 from datetime import datetime
-from glob import glob
 from socket import socket, AF_INET, SOCK_STREAM, error
 from threading import Lock
 from threading import Thread
@@ -147,7 +146,7 @@ class Peer:
 
     def stop(self):
         """ stops the P2PServer running on this peer """
-        self.server.stop()
+        self.Leave()
         self._server_thread.join()
 
     def PQuery(self):
@@ -221,7 +220,7 @@ class Peer:
 
     def Leave(self):
         """ sends Leave message to RS to rescind the registration of this peers P2PServer """
-        self.stop()
+        self.server.stop()
 
         msg = Message()
         msg.method = MethodTypes.Leave.name

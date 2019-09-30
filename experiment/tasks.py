@@ -11,7 +11,7 @@ random.seed(1)
 
 
 def task1():
-    rs = RegistrationServer(RS_HOST, RS_PORT)
+    # rs = RegistrationServer(RS_HOST, RS_PORT)
 
     p0 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=GOAL_RFC_STATE)
     p1 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
@@ -29,11 +29,11 @@ def task1():
     result_queue = queue.Queue()
 
     # start Registration Server
-    rs_thread = Thread(target=rs.start)
-    rs_thread.start()
+    # rs_thread = Thread(target=rs.start)
+    # rs_thread.start()
 
     # start peer P0:
-    p0_thread = Thread(target=p0.start)
+    p0_thread = Thread(target=p0.start, args='0')
     p0_thread.start()
 
     # start P2PServer on all other peers
@@ -65,8 +65,8 @@ def task1():
     p0_thread.join()
 
     # stop Registration Server
-    rs.stop()
-    rs_thread.join()
+    # rs.stop()
+    # rs_thread.join()
 
     peers[str(p0)] = ('P0', p0)
 
