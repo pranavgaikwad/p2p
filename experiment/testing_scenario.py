@@ -39,17 +39,21 @@ def test():
     time.sleep(delay)
 
     # A gets all active peers from RS, which in this case is just B
+    print("RFC Client at A tries to fetch list of active peers from RS")
     active_peers = a.get_active_peers()
     print("Active peers returned by RS to A's RFC Client: {}".format(active_peers))
     peer_b = active_peers[0]
 
     # A gets B's RFCIndex
+    print("RFC Client at A tries to fetch B's RFC Index")
     b_index = a.RFCQuery(peer_b)
     print("B's RFC Index: {}".format(b_index))
     b_index = a._flatten(b_index)
 
     # Download only one of the RFCs from B
-    _rfc = a.fetch_interested_rfc(peer_b, b_index.pop())
+    rfc = b_index.pop()
+    print("RFC Client at A tries to fetch RFC{}".format(rfc))
+    _rfc = a.fetch_interested_rfc(peer_b, rfc)
     print("First 200 bytes of RFC received... \n{}".format(str(_rfc)[:200]))
 
     # B leaves the system
@@ -59,7 +63,7 @@ def test():
 
     # A pings RS to get all active peers, since no active peer is found A will throw a NotFoundError after 3 tries
     try:
-        print("RFC Client at A tries to get active peers... ")
+        print("RFC Client at A tries to get active peers again...")
         a.get_active_peers()
     except NotFoundError as e:
         print("After 3 retries, RFC Client at A throws exception: {}".format(e))
