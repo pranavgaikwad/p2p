@@ -6,6 +6,7 @@ import threading
 from p2p.server.rs import RegistrationServer
 from p2p.proto.proto import Message, MethodTypes, Headers, ServerResponse, ResponseStatus
 from p2p.utils.app_constants import RS, RS_HOST, RS_PORT
+from p2p.utils.app_utils import send, recv
 
 random.seed(0)
 
@@ -33,20 +34,20 @@ class RegistrationServerTest(unittest.TestCase):
         msg.version = Message.VERSION
         msg.payload = "nick-name{}{}".format(Message.SR_FIELDS, random.randint(7000, 8000))
 
-        client.send(msg.to_bytes())
-        response = ServerResponse("", "200").from_str(client.recv(1024).decode("utf-8"))
+        send(client, msg)
+        response = ServerResponse().from_bytes(recv(client))
         self.assertTrue(Headers.Cookie.name in response.headers)
 
         msg.headers[Headers.Cookie.name] = response.headers[Headers.Cookie.name]
         msg.method = MethodTypes.KeepAlive.name
-        client.send(msg.to_bytes())
-        client.recv(1024)
+        send(client, msg)
+        ServerResponse().from_bytes(recv(client))
 
         msg.method = MethodTypes.Leave.name
-        client.send(msg.to_bytes())
-        data = client.recv(1024)
+        send(client, msg)
+        data = ServerResponse().from_bytes(recv(client))
 
-        self.buffer.append(data.decode('utf-8'))
+        self.buffer.append(str(data))
         client.close()
 
     def _socket_error_test(self):
@@ -61,10 +62,10 @@ class RegistrationServerTest(unittest.TestCase):
         msg.version = Message.VERSION
         msg.payload = "Invalid message"
 
-        client.send(msg.to_bytes())
-        data = client.recv(1024)
+        send(client, msg)
+        data = ServerResponse().from_bytes(recv(client))
 
-        self.fail_buffer.append(data.decode('utf-8'))
+        self.fail_buffer.append(str(data))
         client.close()
 
     def _socket_cookie_test(self):
@@ -79,12 +80,12 @@ class RegistrationServerTest(unittest.TestCase):
         msg.version = Message.VERSION
         msg.payload = "nick-name{}{}".format(Message.SR_FIELDS, random.randint(7000, 8000))
 
-        client.send(msg.to_bytes())
-        client.recv(1024)
+        send(client, msg)
+        ServerResponse().from_bytes(recv(client))
 
         msg.method = MethodTypes.KeepAlive.name
-        client.send(msg.to_bytes())
-        response = ServerResponse("", "").from_str(client.recv(1024).decode("utf-8"))
+        send(client, msg)
+        response = ServerResponse().from_bytes(recv(client))
 
         self.assertEqual(int(response.status), ResponseStatus.Forbidden.value)
         client.close()

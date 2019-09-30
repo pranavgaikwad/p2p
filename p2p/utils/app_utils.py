@@ -5,21 +5,27 @@ import socket
 import errno
 import time
 from functools import wraps
+from itertools import chain
 
 
 def logger():
     _logger = logging.getLogger(__name__)
     if not _logger.hasHandlers():
         console_handler = logging.StreamHandler()
-        _logger.setLevel(logging.DEBUG)
+        _logger.setLevel(logging.INFO)
         formatter = logging.Formatter('%(levelname)s %(asctime)-15s %(message)s', '%Y-%m-%d %H:%M:%S')
         console_handler.setFormatter(formatter)
         _logger.addHandler(console_handler)
     return _logger
 
 
+def flatten(nested):
+    return chain.from_iterable(nested)
+
+
 def retry(exceptions, tries=3, delay=2, _logger=logger()):
     """ retry calling the decorated function """
+
     def deco_retry(f):
         @wraps(f)
         def f_retry(*args, **kwargs):
@@ -33,7 +39,9 @@ def retry(exceptions, tries=3, delay=2, _logger=logger()):
                     time.sleep(mdelay)
                     mtries -= 1
             return f(*args, **kwargs)
+
         return f_retry  # true decorator
+
     return deco_retry
 
 
@@ -77,3 +85,15 @@ def _get_buffer_size(msg_length, buffer_length):
     if remaining_msg_size > MAX_BUFFER_SIZE:
         return MAX_BUFFER_SIZE
     return remaining_msg_size
+
+
+class ForbiddenError(Exception):
+    pass
+
+
+class CriticalError(Exception):
+    pass
+
+
+class NotFoundError(Exception):
+    pass

@@ -5,7 +5,8 @@ from p2p.server.server import Server
 from p2p.client.client import ClientEntry as Client
 from p2p.proto.proto import Message, ServerResponse as Response
 from p2p.proto.proto import ResponseStatus as Status, MethodTypes
-from p2p.proto.proto import Headers, ForbiddenError
+from p2p.proto.proto import Headers
+from p2p.utils.app_utils import ForbiddenError
 from p2p.utils.app_constants import RS_HOST, RS_PORT
 
 random.seed(0)

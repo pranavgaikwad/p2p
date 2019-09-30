@@ -130,15 +130,3 @@ class ServerResponse(Message):
     def _get_components(self, msg):
         meta, payload, _ = msg.split(self.SR_COMPONENT)
         return meta, payload
-
-
-class ForbiddenError(Exception):
-    pass
-
-
-class CriticalError(Exception):
-    pass
-
-
-class NotFoundError(Exception):
-    pass

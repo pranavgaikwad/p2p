@@ -4,33 +4,43 @@ from ast import literal_eval
 from threading import Thread
 from glob import glob
 from datetime import datetime
-from p2p.utils.app_utils import logger, send, recv, retry
+from p2p.utils.app_utils import logger, send, recv, retry, flatten, ForbiddenError, CriticalError, NotFoundError
 from p2p.server.server import Server
 from p2p.proto.proto import ResponseStatus as Status
 from p2p.proto.proto import ServerResponse as Response
-from p2p.proto.proto import Message, MethodTypes, Headers, ForbiddenError, CriticalError, NotFoundError
-from p2p.utils.app_constants import RS, RFC_PATH, GOAL_RFC_STATE
+from p2p.proto.proto import Message, MethodTypes, Headers
+from p2p.utils.app_constants import RS, RFC_PATH, GOAL_RFC_STATE, RFC_SET1, RFC_SET2
 from threading import Lock
+from collections import defaultdict
 
 SEP = Message.SR_FIELDS
 
 
 class Peer:
 
-    def __init__(self, host, port, rfc_index, goal_rfc_state=GOAL_RFC_STATE):
+    def __init__(self, host, port, initial_rfc_state, goal_rfc_state=GOAL_RFC_STATE):
         self.logger = logger()
-        self.server = P2PServer(host, port, self)
-        self.rfc_index = rfc_index  # set[str] containing rfc indices or initial state
-        self.goal_state = goal_rfc_state
-        self.rfc_data = {}
-        self.registered = False
         self.mutex = Lock()
+        self.server = P2PServer(host, port, self)
+        self.server_thread = None
+        self.rfc_index = self._prepare_rfc_index(initial_rfc_state)
+        self.rfc_data = {}
+        self.goal_state = goal_rfc_state
+        self.registered = False
+
+    def __str__(self):
+        return "{}:{}".format(self.server.host, self.server.port)
+
+    def _prepare_rfc_index(self, initial_state):
+        rfc_index = defaultdict(set)
+        rfc_index[str(self)].update(initial_state.copy())
+        return rfc_index
 
     def load_rfcs(self):
         """ loads RFCs into memory """
         for file in glob(RFC_PATH + "/*.txt"):
             idx = file.split('/')[-1][3:7]
-            if idx in self.rfc_index:
+            if idx in flatten(self.rfc_index.values()):
                 with open(file) as f:
                     self.rfc_data[idx] = f.read()
         self.logger.info("Loaded {} RFCs".format(len(self.rfc_data)))
@@ -41,36 +51,53 @@ class Peer:
         while not self.registered:
             continue
 
-        # perform client task
+        # loop to fetch and merge RFC Index from other peers
         done = False
         while not done:
             try:
-                remaining = self.goal_state - self.rfc_index
+                remaining = self.goal_state - set(flatten(self.rfc_index.values()))
                 if not remaining:
-                    self.logger.info("[CLIENT] Client task completed")
+                    self.logger.info("[CLIENT] RFC Index complete")
                     break
 
                 active_peers = self._get_active_peers()
 
                 for peer in active_peers:
-                    remaining = self.goal_state - self.rfc_index
+                    # all missing RFCs
+                    remaining = self.goal_state - set(flatten(self.rfc_index.values()))
+
                     if remaining:
-                        interested = remaining & self.RFCQuery(peer)
+                        # missing RFCs available from this peer
+                        peer_rfc_index = self.RFCQuery(peer)
+                        interested = remaining & set(flatten(peer_rfc_index.values()))
+
                         if interested:
-                            new_rfcs = self._fetch_interested_rfcs(peer, interested)
-                            self._update_rfc_index(new_rfcs)
+                            self._update_rfc_index(peer_rfc_index)
                         else:
                             self.logger.info("[CLIENT] No RFCs of interest found from Peer {}".format(peer))
                     else:
                         done = True
-                        self.logger.info("[CLIENT] Client task completed")
+                        self.logger.info("[CLIENT] RFC Index complete")
                         break
             except NotFoundError as e:
-                self.logger.error("[CLIENT] {}, stopping client task".format(e))
+                self.logger.error("{}, stopping client task".format(e))
                 break
             except CriticalError as e:
                 self.logger.error("[CLIENT] Critical error encountered, stopping client task: {}".format(e))
                 break
+
+        print(str(self), self.rfc_index)
+
+        # loop to fetch actual RFC data
+        for peer, index in self.rfc_index.items():
+            if peer != str(self):
+                # fetch interested RFCs one at a time
+                for rfc in index:
+                    new_rfc = self._fetch_interested_rfc(peer, rfc)
+                    self._update_rfc_data(new_rfc)
+
+        self.logger.info(
+            "[CLIENT] Client task completed at peer: {}, total RFC count: {}".format(str(self), len(self.rfc_data)))
 
     @retry(NotFoundError, tries=3, delay=2)
     def _get_active_peers(self):
@@ -80,25 +107,36 @@ class Peer:
             raise NotFoundError("[CLIENT] No active peers found")
         return active_peers
 
-    def _fetch_interested_rfcs(self, peer, interested):
+    def _fetch_interested_rfc(self, peer, rfc):
         """ GetRFC wrapper """
-        new_rfcs = map(literal_eval, self.GetRFC(peer, interested))  # List[dict_str] -> List[Dict]
-        return new_rfcs
+        new_rfc = None
+        t = None
+        try:
+            t = self.GetRFC(peer, rfc)
+            new_rfc = literal_eval(t)  # dict_str -> Dict{rfc_number: rfc_data}
+        except:
+            print(t, new_rfc)
+        return new_rfc
 
-    def _update_rfc_index(self, new_rfcs):
+    def _update_rfc_index(self, interested):
         """ update this peers RFC Index """
         with self.mutex:
-            for rfc in new_rfcs:
-                self.rfc_index.update(rfc.keys())
-                self.rfc_data.update(rfc)
+            self.rfc_index.update(interested)
+
+    def _update_rfc_data(self, new_rfc):
+        """ update this peers RFC Data """
+        with self.mutex:
+            self.rfc_data.update(new_rfc)
 
     def start(self):
         """ starts the P2PServer on this peer """
-        Thread(target=self.server.start).start()
+        self.server_thread = Thread(target=self.server.start)
+        self.server_thread.start()
 
     def stop(self):
         """ stops the P2PServer running on this peer """
         self.server.stop()
+        self.server_thread.join()
 
     def PQuery(self):
         """ sends PQuery message RS to get the list of active peers """
@@ -130,7 +168,7 @@ class Peer:
         msg.method = MethodTypes.RFCQuery.name
         msg.version = Message.VERSION
 
-        index = set()
+        index = dict()
         with socket(AF_INET, SOCK_STREAM) as conn:
             try:
                 host, port = peer.split(':')
@@ -138,7 +176,7 @@ class Peer:
                 send(conn, msg)
                 response = Response().from_bytes(recv(conn))
                 if response.payload:
-                    index = set(response.payload.split(SEP))
+                    index = defaultdict(set, literal_eval(response.payload))
                 self.logger.info("[CLIENT] RFC Index retrieved from Peer {}".format(peer))
             except error as se:
                 self.logger.error("[CLIENT] Socket error: {}".format(se))
@@ -146,14 +184,14 @@ class Peer:
                 self.logger.error("[CLIENT] Error while retrieving RFC Index from Peer {}: {}".format(peer, e))
         return index
 
-    def GetRFC(self, peer, rfcs):
-        """ sends GetRFC message to an active peer requesting specific RFCs of interest """
+    def GetRFC(self, peer, rfc):
+        """ sends GetRFC message to an active peer requesting a specific RFC of interest """
         msg = Message()
         msg.method = MethodTypes.GetRFC.name
         msg.version = Message.VERSION
-        msg.payload = SEP.join(rfcs)
+        msg.payload = rfc
 
-        new_rfcs = []
+        new_rfc = {}
         with socket(AF_INET, SOCK_STREAM) as conn:
             try:
                 host, port = peer.split(':')
@@ -161,13 +199,13 @@ class Peer:
                 send(conn, msg)
                 response = Response().from_bytes(recv(conn))
                 if response.payload:
-                    new_rfcs = response.payload.split(SEP)
-                self.logger.info("[CLIENT] {} new RFCs fetched from Peer {}".format(len(new_rfcs), peer))
+                    new_rfc = response.payload
+                self.logger.info("[CLIENT] {} new RFC fetched from Peer {}".format(1, peer))
             except error as se:
                 self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
                 self.logger.error("[CLIENT] Error while fetching new RFCs from Peer {}: {}".format(peer, e))
-        return new_rfcs
+        return new_rfc
 
     def Leave(self):
         """ sends Leave message to RS to rescind the registration of this peers P2PServer """
@@ -215,8 +253,9 @@ class P2PServer(Server):
     def _handle_rfcquery(self, _conn, _msg):
         """ return this peers RFC Index """
         try:
-            payload = SEP.join(self.platform_peer.rfc_index)
-            response = Response(payload, Status.Success.value)
+            with self.platform_peer.mutex:
+                payload = str(dict(self.platform_peer.rfc_index))
+                response = Response(payload, Status.Success.value)
         except Exception as e:
             self.logger.error("Failed to return RFC Index: {}".format(e))
             response = Response(Status.InternalError.name, Status.InternalError.value)
@@ -225,11 +264,12 @@ class P2PServer(Server):
     def _handle_getrfc(self, _conn, _msg):
         """ return data for requested RFCs as List[Dict] where each Dict is {RFC Index: RFC Data}"""
         try:
-            rfcs = _msg.payload.split(SEP)
-            payload = SEP.join([str({rfc: self.platform_peer.rfc_data[rfc]}) for rfc in rfcs])
-            response = Response(payload, Status.Success.value)
+            rfc = _msg.payload
+            with self.platform_peer.mutex:
+                payload = str({rfc: self.platform_peer.rfc_data[rfc]})
+                response = Response(payload, Status.Success.value)
         except Exception as e:
-            self.logger.error("Failed to return RFC Index: {}".format(e))
+            self.logger.error("Failed to return RFC data: {}".format(e))
             response = Response(Status.InternalError.name, Status.InternalError.value)
         return response
 
@@ -342,10 +382,8 @@ class ClientEntry(object):
 
 
 if __name__ == '__main__':
-    s1 = {'1001', '1002', '1003', '1004', '1005'}
-    s2 = {'1006', '1007', '1008', '1009', '1010'}
-    s3 = s1.union(s2) - {'1001'}
-    p = Peer("127.0.0.1", random.randint(65400, 65500), s3)
+    p = Peer("127.0.0.1", random.randint(65400, 65500), RFC_SET1)
+    server_thread = None
     try:
         p.start()
         t = Thread(target=p.main)
