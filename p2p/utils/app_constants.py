@@ -20,4 +20,4 @@ GOAL_RFC_STATE = RFC_SET1 | RFC_SET2 | RFC_SET3 | RFC_SET4 | RFC_SET5 | RFC_SET6
 
 # RFC_PATH = os.path.join(Path(__file__).parent.parent.parent, "rfcs_very_large")
 # RFC_PATH = os.path.join(Path(__file__).parent.parent.parent, "rfcs_large")
-RFC_PATH = os.path.join(Path(__file__).parent.parent.parent, "rfcs")
+RFC_PATH = os.path.join(Path(__file__).parent.parent, "rfcs")
