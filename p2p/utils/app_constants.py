@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 
 # well known host and port for registration server
-RS_HOST = "127.0.0.1"
+RS_HOST = "192.168.10.54"
+# RS_HOST = "0.0.0.0"
 RS_PORT = 65423
 RS = (RS_HOST, RS_PORT)
 

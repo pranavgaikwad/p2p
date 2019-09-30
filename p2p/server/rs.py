@@ -37,7 +37,8 @@ class RegistrationServer(Server):
         client = None
         self.mutex.acquire()
         try:
-            host, p2port = msg.payload.split(Message.SR_FIELDS)
+            host = conn.getpeername()[0]
+            _, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client(host=host, p2port=p2port, cookie=random.randint(1000, 9999))
             self.clients[Client.id(host, p2port)] = client
             self.logger.info("Registered new client {}".format(client))
@@ -58,7 +59,8 @@ class RegistrationServer(Server):
         client = None
         self.mutex.acquire()
         try:
-            host, p2port = msg.payload.split(Message.SR_FIELDS)
+            host = conn.getpeername()[0]
+            _, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
@@ -84,7 +86,8 @@ class RegistrationServer(Server):
         client = None
         response = Response("Success", Status.Success.value)
         try:
-            host, p2port = msg.payload.split(Message.SR_FIELDS)
+            host = conn.getpeername()[0]
+            _, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
@@ -110,7 +113,8 @@ class RegistrationServer(Server):
         client = None
         self.mutex.acquire()
         try:
-            host, p2port = msg.payload.split(Message.SR_FIELDS)
+            host = conn.getpeername()[0]
+            _, p2port = msg.payload.split(Message.SR_FIELDS)
             client = Client.id(host, p2port)
             if not self._validate_cookie(client, msg):
                 raise ForbiddenError
