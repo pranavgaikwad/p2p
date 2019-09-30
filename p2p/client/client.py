@@ -1,17 +1,19 @@
-from socket import socket, AF_INET, SOCK_STREAM, error
+import time
 import random
 from ast import literal_eval
-from threading import Thread
-from glob import glob
+from collections import defaultdict
 from datetime import datetime
-from p2p.utils.app_utils import logger, send, recv, retry, flatten, ForbiddenError, CriticalError, NotFoundError
-from p2p.server.server import Server
+from glob import glob
+from socket import socket, AF_INET, SOCK_STREAM, error
+from threading import Lock
+from threading import Thread
+
+from p2p.proto.proto import Message, MethodTypes, Headers
 from p2p.proto.proto import ResponseStatus as Status
 from p2p.proto.proto import ServerResponse as Response
-from p2p.proto.proto import Message, MethodTypes, Headers
-from p2p.utils.app_constants import RS, RFC_PATH, GOAL_RFC_STATE, RFC_SET1, RFC_SET2
-from threading import Lock
-from collections import defaultdict
+from p2p.server.server import Server
+from p2p.utils.app_constants import RS, RFC_PATH, GOAL_RFC_STATE, RFC_SET1
+from p2p.utils.app_utils import logger, send, recv, retry, flatten, ForbiddenError, CriticalError, NotFoundError
 
 SEP = Message.SR_FIELDS
 
@@ -22,7 +24,7 @@ class Peer:
         self.logger = logger()
         self.mutex = Lock()
         self.server = P2PServer(host, port, self)
-        self.server_thread = None
+        self._server_thread = None
         self.rfc_index = self._prepare_rfc_index(initial_rfc_state)
         self.rfc_data = {}
         self.goal_state = goal_rfc_state
@@ -47,29 +49,31 @@ class Peer:
 
     def main(self):
         """ performs the main project task of downloading the RFCs from other peers """
-        # wait for this peer to be registered
+        # wait for this peer to be registered with RS
         while not self.registered:
             continue
+
+        start_time = time.perf_counter()
 
         # loop to fetch and merge RFC Index from other peers
         done = False
         while not done:
             try:
-                remaining = self.goal_state - set(flatten(self.rfc_index.values()))
+                remaining = self.goal_state - self._flatten(self.rfc_index)
                 if not remaining:
                     self.logger.info("[CLIENT] RFC Index complete")
                     break
 
-                active_peers = self._get_active_peers()
+                active_peers = self.get_active_peers()
 
                 for peer in active_peers:
                     # all missing RFCs
-                    remaining = self.goal_state - set(flatten(self.rfc_index.values()))
+                    remaining = self.goal_state - self._flatten(self.rfc_index)
 
                     if remaining:
                         # missing RFCs available from this peer
                         peer_rfc_index = self.RFCQuery(peer)
-                        interested = remaining & set(flatten(peer_rfc_index.values()))
+                        interested = remaining & self._flatten(peer_rfc_index)
 
                         if interested:
                             self._update_rfc_index(peer_rfc_index)
@@ -86,36 +90,38 @@ class Peer:
                 self.logger.error("[CLIENT] Critical error encountered, stopping client task: {}".format(e))
                 break
 
-        print(str(self), self.rfc_index)
+        times = defaultdict(list)
 
         # loop to fetch actual RFC data
         for peer, index in self.rfc_index.items():
             if peer != str(self):
                 # fetch interested RFCs one at a time
                 for rfc in index:
-                    new_rfc = self._fetch_interested_rfc(peer, rfc)
+                    _start_time = time.perf_counter()
+                    new_rfc = self.fetch_interested_rfc(peer, rfc)
+                    times[peer].append((rfc, time.perf_counter() - _start_time))
                     self._update_rfc_data(new_rfc)
 
-        self.logger.info(
-            "[CLIENT] Client task completed at peer: {}, total RFC count: {}".format(str(self), len(self.rfc_data)))
+        cumulative_time = time.perf_counter() - start_time
+
+        self.logger.info("[CLIENT] Task completed at peer: {}, final RFC count: {}".format(self, len(self.rfc_data)))
+
+        return str(self), cumulative_time, dict(times)
 
     @retry(NotFoundError, tries=3, delay=2)
-    def _get_active_peers(self):
+    def get_active_peers(self):
         """ PQuery wrapper with retry mechanism """
         active_peers = self.PQuery()
         if not active_peers:
             raise NotFoundError("[CLIENT] No active peers found")
         return active_peers
 
-    def _fetch_interested_rfc(self, peer, rfc):
+    def fetch_interested_rfc(self, peer, rfc):
         """ GetRFC wrapper """
-        new_rfc = None
-        t = None
         try:
-            t = self.GetRFC(peer, rfc)
-            new_rfc = literal_eval(t)  # dict_str -> Dict{rfc_number: rfc_data}
+            new_rfc = literal_eval(self.GetRFC(peer, rfc))  # dict_str -> Dict{rfc_number: rfc_data}
         except:
-            print(t, new_rfc)
+            raise Exception("Literal eval parsing error at peer: {}".format(self))
         return new_rfc
 
     def _update_rfc_index(self, interested):
@@ -128,15 +134,20 @@ class Peer:
         with self.mutex:
             self.rfc_data.update(new_rfc)
 
-    def start(self):
+    @staticmethod
+    def _flatten(data):
+        """ flattens nested data structure into a set"""
+        return set(flatten(data.values()))
+
+    def start(self, tname=None):
         """ starts the P2PServer on this peer """
-        self.server_thread = Thread(target=self.server.start)
-        self.server_thread.start()
+        self._server_thread = Thread(name=tname, target=self.server.start)
+        self._server_thread.start()
 
     def stop(self):
         """ stops the P2PServer running on this peer """
         self.server.stop()
-        self.server_thread.join()
+        self._server_thread.join()
 
     def PQuery(self):
         """ sends PQuery message RS to get the list of active peers """
@@ -154,11 +165,11 @@ class Peer:
                 response = Response().from_bytes(recv(conn))
                 if response.payload:
                     peers = response.payload.split(SEP)
-                self.logger.info("[CLIENT] {} active Peer(s) found".format(len(peers)))
+                self.logger.info("[CLIENT] {} active peer(s) found".format(len(peers)))
             except error as se:
                 self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
-                self.logger.error("[CLIENT] Error while retrieving active Peers: {}".format(e))
+                self.logger.error("[CLIENT] Error while retrieving active peers: {}".format(e))
                 raise CriticalError
         return peers
 
@@ -177,11 +188,11 @@ class Peer:
                 response = Response().from_bytes(recv(conn))
                 if response.payload:
                     index = defaultdict(set, literal_eval(response.payload))
-                self.logger.info("[CLIENT] RFC Index retrieved from Peer {}".format(peer))
+                self.logger.info("[CLIENT] RFC Index retrieved from peer {}".format(peer))
             except error as se:
                 self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
-                self.logger.error("[CLIENT] Error while retrieving RFC Index from Peer {}: {}".format(peer, e))
+                self.logger.error("[CLIENT] Error while retrieving RFC Index from peer {}: {}".format(peer, e))
         return index
 
     def GetRFC(self, peer, rfc):
@@ -200,15 +211,17 @@ class Peer:
                 response = Response().from_bytes(recv(conn))
                 if response.payload:
                     new_rfc = response.payload
-                self.logger.info("[CLIENT] {} new RFC fetched from Peer {}".format(1, peer))
+                self.logger.info("[CLIENT] {} new RFC fetched from peer {}".format(1, peer))
             except error as se:
                 self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
-                self.logger.error("[CLIENT] Error while fetching new RFCs from Peer {}: {}".format(peer, e))
+                self.logger.error("[CLIENT] Error while fetching new RFCs from peer {}: {}".format(peer, e))
         return new_rfc
 
     def Leave(self):
         """ sends Leave message to RS to rescind the registration of this peers P2PServer """
+        self.stop()
+
         msg = Message()
         msg.method = MethodTypes.Leave.name
         msg.version = Message.VERSION
@@ -224,9 +237,9 @@ class Peer:
                 status = response.status
                 if int(status) == Status.Success.value:
                     self.logger.info("[Client] Successfully left P2P-DI system")
-                    self.stop()
                 else:
                     self.logger.error("[CLIENT] Failed to leave P2P-DI system")
+                    self.start()
             except error as se:
                 self.logger.error("[CLIENT] Socket error: {}".format(se))
             except Exception as e:
@@ -386,9 +399,9 @@ if __name__ == '__main__':
     server_thread = None
     try:
         p.start()
-        t = Thread(target=p.main)
-        t.start()
-        t.join()
+        # t = Thread(target=p.main)
+        # t.start()
+        # t.join()
     except Exception as err:
         print("Stopping... {}".format(err))
         p.stop()

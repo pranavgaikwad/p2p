@@ -95,7 +95,7 @@ class RegistrationServer(Server):
                     active_peers.add(_id)
             if client in active_peers:
                 active_peers.remove(client)  # remove the requesting client from the set of active peers
-            self.logger.info("{} active Peers found".format(len(active_peers)))
+            self.logger.info("{} active peer(s) found".format(len(active_peers)))
             response.payload = Message.SR_FIELDS.join(active_peers)
         except ForbiddenError:
             self.logger.error("Forbidden client: {}".format(self.clients[client]))
