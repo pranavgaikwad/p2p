@@ -40,7 +40,7 @@ def task1():
     for (alias, peer) in peers.values():
         peer.start()
 
-    t1 = Thread(target=lambda: result_queue.put(p1.m4in()))
+    t1 = Thread(target=lambda: result_queue.put(p1.main()))
     t2 = Thread(target=lambda: result_queue.put(p2.main()))
     t3 = Thread(target=lambda: result_queue.put(p3.main()))
     t4 = Thread(target=lambda: result_queue.put(p4.main()))
