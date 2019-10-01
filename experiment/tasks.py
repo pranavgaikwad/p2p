@@ -13,12 +13,12 @@ random.seed(1)
 def task1():
     rs = RegistrationServer(RS_HOST, RS_PORT)
 
-    p0 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=GOAL_RFC_STATE)
-    p1 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
-    p2 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
-    p3 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
-    p4 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
-    p5 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
+    p0 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=GOAL_RFC_STATE)
+    p1 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
+    p2 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
+    p3 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
+    p4 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
+    p5 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET_EMPTY, goal_rfc_state=GOAL_RFC_STATE)
 
     peers = {str(p1): ('P1', p1),
              str(p2): ('P2', p2),
@@ -40,7 +40,7 @@ def task1():
     for (alias, peer) in peers.values():
         peer.start()
 
-    t1 = Thread(target=lambda: result_queue.put(p1.main()))
+    t1 = Thread(target=lambda: result_queue.put(p1.m4in()))
     t2 = Thread(target=lambda: result_queue.put(p2.main()))
     t3 = Thread(target=lambda: result_queue.put(p3.main()))
     t4 = Thread(target=lambda: result_queue.put(p4.main()))
@@ -76,12 +76,12 @@ def task1():
 def task2():
     rs = RegistrationServer(RS_HOST, RS_PORT)
 
-    p0 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET1, goal_rfc_state=GOAL_RFC_STATE)
-    p1 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET2, goal_rfc_state=GOAL_RFC_STATE)
-    p2 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET3, goal_rfc_state=GOAL_RFC_STATE)
-    p3 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET4, goal_rfc_state=GOAL_RFC_STATE)
-    p4 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET5, goal_rfc_state=GOAL_RFC_STATE)
-    p5 = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET6, goal_rfc_state=GOAL_RFC_STATE)
+    p0 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET1, goal_rfc_state=GOAL_RFC_STATE)
+    p1 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET2, goal_rfc_state=GOAL_RFC_STATE)
+    p2 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET3, goal_rfc_state=GOAL_RFC_STATE)
+    p3 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET4, goal_rfc_state=GOAL_RFC_STATE)
+    p4 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET5, goal_rfc_state=GOAL_RFC_STATE)
+    p5 = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET6, goal_rfc_state=GOAL_RFC_STATE)
 
     peers = {str(p0): ('P0', p0),
              str(p1): ('P1', p1),
@@ -155,5 +155,5 @@ def _print(task, results):
 
 
 if __name__ == '__main__':
-    # _print(1, task1())
-    _print(2, task2())
+    _print(1, task1())
+    # _print(2, task2())

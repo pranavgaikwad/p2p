@@ -15,8 +15,8 @@ def test():
 
     rs = RegistrationServer(RS_HOST, RS_PORT)
 
-    a = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state=RFC_SET_EMPTY)
-    b = Peer("127.0.0.1", random.randint(65430, 65530), initial_rfc_state={'8451', '8464'})
+    a = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state=RFC_SET_EMPTY)
+    b = Peer("127.0.0.1", random.randint(64430, 64530), initial_rfc_state={'8451', '8464'})
 
     # start Registration Server
     rs_thread = Thread(name='RS', target=rs.start)

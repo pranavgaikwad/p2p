@@ -2,9 +2,11 @@ import os
 import socket
 from pathlib import Path
 
+from p2p.utils.app_utils import get_true_hostname
+
 # well known host and port for registration server
 # RS_HOST = "192.168.10.54"
-RS_HOST = socket.gethostbyname(socket.gethostname())
+RS_HOST = get_true_hostname()
 RS_PORT = 65423
 RS = (RS_HOST, RS_PORT)
 

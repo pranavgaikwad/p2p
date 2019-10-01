@@ -1,4 +1,3 @@
-from p2p.utils.app_constants import MAX_BUFFER_SIZE
 from struct import pack, unpack
 import logging
 import socket
@@ -6,6 +5,8 @@ import errno
 import time
 from functools import wraps
 from itertools import chain
+
+MAX_BUFFER_SIZE = 8192
 
 
 def logger():
@@ -46,8 +47,16 @@ def retry(exceptions, tries=3, delay=2, _logger=logger()):
 
 
 def get_true_hostname():
-    name = socket.gethostname()
-    return socket.gethostbyname(name)
+    """ dirty hack to make this system platform independent, returns address starting with '192.' """
+    try:
+        address = socket.gethostbyname(socket.gethostname())
+    except:
+        address = ''
+    if not address or address.startswith('127.'):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('4.2.2.1', 0))
+        address = s.getsockname()[0]
+    return address
 
 
 def send(sock, msg):
