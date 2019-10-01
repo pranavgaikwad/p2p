@@ -1,11 +1,11 @@
-import random
 import queue
-from threading import Thread
+import random
 from pprint import pprint
+from threading import Thread
 
-from p2p.utils.app_constants import *
-from p2p.server.rs import RegistrationServer
 from p2p.client.client import Peer
+from p2p.server.rs import RegistrationServer
+from p2p.utils.app_constants import *
 
 random.seed(1)
 
@@ -33,7 +33,7 @@ def task1():
     rs_thread.start()
 
     # start peer P0:
-    p0_thread = Thread(target=p0.start, args='0')
+    p0_thread = Thread(target=p0.start)
     p0_thread.start()
 
     # start P2PServer on all other peers
